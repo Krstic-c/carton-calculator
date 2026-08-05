@@ -587,12 +587,16 @@ function isoPt(x,y,z,scale){
 
 function polyStr(pts){ return pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' '); }
 
-// renders a wireframe outer box (outerL x outerW x outerH, where H is vertical)
-// filled with an nx (length) x nz (width) x ny (height-layers) grid of unit
-// items sized itemL x itemW x itemH. Falls back to a subdivision-grid drawing
-// when the item count is too large to render individually.
+// renders a wireframe outer box (outerL x outerW x outerH, where H is vertical).
+// Footprint can be a single uniform grid (nx/nz/itemL/itemW) or a `blocks`
+// array of {x0,z0,nx,nz,itemDimX,itemDimZ} sub-regions with independent
+// orientation/count each (used for mixed row/column packing). All blocks
+// share the same itemH and ny (height-layer count). Falls back to a
+// subdivision-grid drawing when the item count is too large to render
+// individually.
 function renderIsoScene(opts){
   const {outerL,outerW,outerH,itemL,itemW,itemH,nx,nz,ny,targetW=420,targetH=340,maxItems=260,fillCount=Infinity} = opts;
+  const blocks = opts.blocks || [{x0:0, z0:0, nx, nz, itemDimX:itemL, itemDimZ:itemW}];
   if(outerL<=0||outerW<=0||outerH<=0) return '<div class="note flag">尺寸无效，无法绘制。</div>';
 
   const rawW = (outerL+outerW)*ISO_COS;
@@ -631,25 +635,37 @@ function renderIsoScene(opts){
   `;
 
   let itemsSvg = '';
-  const total = nx*nz*ny;
-  if(total>0 && total<=maxItems && itemL>0 && itemW>0 && itemH>0){
+  const total = blocks.reduce((s,b)=> s + b.nx*b.nz, 0) * ny;
+  if(total>0 && total<=maxItems && itemH>0){
     const gapFrac = 0.06;
     const list = [];
     // fill order mirrors how you'd actually pack a carton: complete each
-    // layer (k) before starting the next, row by row (j), left to right (i).
-    for(let k=0;k<ny;k++) for(let j=0;j<nz;j++) for(let i=0;i<nx;i++) list.push([i,j,k, k*nz*nx + j*nx + i]);
-    list.sort((A,B)=> (A[0]+A[1]+A[2]) - (B[0]+B[1]+B[2]));
-    list.forEach(([i,j,k,fillIdx])=>{
+    // layer (k) before starting the next, block by block, row by row (j), left to right (i).
+    let idx = 0;
+    for(let k=0;k<ny;k++){
+      blocks.forEach(block=>{
+        for(let j=0;j<block.nz;j++) for(let i=0;i<block.nx;i++){
+          list.push([block, i, j, k, idx++]);
+        }
+      });
+    }
+    list.sort((A,B)=> (A[1]+A[2]+A[3]) - (B[1]+B[2]+B[3]));
+    const shades = [
+      {top:'#f0f0ee', side:'#bcbcb8', edge:'#d6d6d3'},
+      {top:'#e3ded9', side:'#a8a099', edge:'#c2bab2'}
+    ];
+    list.forEach(([block,i,j,k,fillIdx])=>{
       const filled = fillIdx < fillCount;
-      const px = i*itemL + itemL*gapFrac/2, dx = itemL*(1-gapFrac);
-      const pz = j*itemW + itemW*gapFrac/2, dz = itemW*(1-gapFrac);
+      const shade = shades[blocks.indexOf(block) % shades.length];
+      const px = block.x0 + i*block.itemDimX + block.itemDimX*gapFrac/2, dx = block.itemDimX*(1-gapFrac);
+      const pz = block.z0 + j*block.itemDimZ + block.itemDimZ*gapFrac/2, dz = block.itemDimZ*(1-gapFrac);
       const py = k*itemH + itemH*gapFrac/2, dy = itemH*(1-gapFrac);
       const A=P(px,py+dy,pz), B=P(px+dx,py+dy,pz), C=P(px+dx,py+dy,pz+dz), D=P(px,py+dy,pz+dz);
       const E=P(px,py,pz), F=P(px+dx,py,pz), G=P(px+dx,py,pz+dz), H2=P(px,py,pz+dz);
       if(filled){
-        itemsSvg += `<polygon points="${polyStr([D,C,G,H2])}" fill="#d6d6d3" stroke="#111" stroke-width="0.5"/>`;
-        itemsSvg += `<polygon points="${polyStr([B,F,G,C])}" fill="#bcbcb8" stroke="#111" stroke-width="0.5"/>`;
-        itemsSvg += `<polygon points="${polyStr([A,B,C,D])}" fill="#f0f0ee" stroke="#111" stroke-width="0.5"/>`;
+        itemsSvg += `<polygon points="${polyStr([D,C,G,H2])}" fill="${shade.edge}" stroke="#111" stroke-width="0.5"/>`;
+        itemsSvg += `<polygon points="${polyStr([B,F,G,C])}" fill="${shade.side}" stroke="#111" stroke-width="0.5"/>`;
+        itemsSvg += `<polygon points="${polyStr([A,B,C,D])}" fill="${shade.top}" stroke="#111" stroke-width="0.5"/>`;
       } else {
         // empty slot: hollow dashed outline only, so gaps read as "no carton here"
         itemsSvg += `<polygon points="${polyStr([D,C,G,H2])}" fill="none" stroke="var(--line-soft)" stroke-width="0.6" stroke-dasharray="2,2"/>`;
@@ -658,18 +674,75 @@ function renderIsoScene(opts){
       }
     });
   } else if(total>maxItems){
-    // too many to draw individually: draw subdivision grid lines on the 3 visible faces instead
+    // too many to draw individually: draw subdivision grid lines on the 3 visible faces instead, per block
     let gridLines = '';
-    for(let j=1;j<nz;j++){ const p1=P(0,outerH,j*itemW), p2=P(outerL,outerH,j*itemW); gridLines += `<line x1="${p1[0]}" y1="${p1[1]}" x2="${p2[0]}" y2="${p2[1]}" stroke="var(--line-soft)" stroke-width="0.6"/>`; }
-    for(let i=1;i<nx;i++){ const p1=P(i*itemL,outerH,0), p2=P(i*itemL,outerH,outerW); gridLines += `<line x1="${p1[0]}" y1="${p1[1]}" x2="${p2[0]}" y2="${p2[1]}" stroke="var(--line-soft)" stroke-width="0.6"/>`; }
-    for(let k=1;k<ny;k++){ const p1=P(0,k*itemH,outerW), p2=P(outerL,k*itemH,outerW); gridLines += `<line x1="${p1[0]}" y1="${p1[1]}" x2="${p2[0]}" y2="${p2[1]}" stroke="var(--line-soft)" stroke-width="0.6"/>`; }
-    for(let i=1;i<nx;i++){ const p1=P(i*itemL,0,outerW), p2=P(i*itemL,outerH,outerW); gridLines += `<line x1="${p1[0]}" y1="${p1[1]}" x2="${p2[0]}" y2="${p2[1]}" stroke="var(--line-soft)" stroke-width="0.6"/>`; }
-    for(let k=1;k<ny;k++){ const p1=P(outerL,k*itemH,0), p2=P(outerL,k*itemH,outerW); gridLines += `<line x1="${p1[0]}" y1="${p1[1]}" x2="${p2[0]}" y2="${p2[1]}" stroke="var(--line-soft)" stroke-width="0.6"/>`; }
-    for(let j=1;j<nz;j++){ const p1=P(outerL,0,j*itemW), p2=P(outerL,outerH,j*itemW); gridLines += `<line x1="${p1[0]}" y1="${p1[1]}" x2="${p2[0]}" y2="${p2[1]}" stroke="var(--line-soft)" stroke-width="0.6"/>`; }
+    blocks.forEach(block=>{
+      const {x0,z0,nx:bnx,nz:bnz,itemDimX,itemDimZ} = block;
+      const x1 = x0 + bnx*itemDimX, z1 = z0 + bnz*itemDimZ;
+      for(let j=1;j<bnz;j++){ const p1=P(x0,outerH,z0+j*itemDimZ), p2=P(x1,outerH,z0+j*itemDimZ); gridLines += `<line x1="${p1[0]}" y1="${p1[1]}" x2="${p2[0]}" y2="${p2[1]}" stroke="var(--line-soft)" stroke-width="0.6"/>`; }
+      for(let i=1;i<bnx;i++){ const p1=P(x0+i*itemDimX,outerH,z0), p2=P(x0+i*itemDimX,outerH,z1); gridLines += `<line x1="${p1[0]}" y1="${p1[1]}" x2="${p2[0]}" y2="${p2[1]}" stroke="var(--line-soft)" stroke-width="0.6"/>`; }
+      const outline = [P(x0,outerH,z0),P(x1,outerH,z0),P(x1,outerH,z1),P(x0,outerH,z1)];
+      gridLines += `<polygon points="${polyStr(outline)}" fill="none" stroke="var(--line-soft)" stroke-width="1"/>`;
+      for(let k=1;k<ny;k++){ const p1=P(x0,k*itemH,z0), p2=P(x1,k*itemH,z0); gridLines += `<line x1="${p1[0]}" y1="${p1[1]}" x2="${p2[0]}" y2="${p2[1]}" stroke="var(--line-soft)" stroke-width="0.4" opacity="0.6"/>`; }
+    });
     itemsSvg = gridLines + `<text x="${targetW/2}" y="${targetH-8}" font-family="var(--font-mono)" font-size="9.5" fill="var(--ink-dim)" text-anchor="middle">共 ${total} 格，数量过多，仅显示网格划分</text>`;
   }
 
   return `<svg class="iso-svg" width="${targetW}" height="${targetH}" viewBox="0 0 ${targetW} ${targetH}">${itemsSvg}${wireLines}${dimLabels}</svg>`;
+}
+
+// ================= mixed-orientation footprint packing =================
+// Fills a dimX x dimZ rectangle with a rectangular item (edges e1, e2),
+// allowing the item to be rotated 90 deg. Rather than forcing one orientation
+// for the whole area (which wastes the leftover strip when the item doesn't
+// divide the footprint evenly), this also tries splitting the footprint into
+// two bands - one per orientation - and keeps whichever arrangement (pure or
+// mixed) packs the most items. This mirrors the common real-world palletizing
+// trick of turning the last row/column sideways to use leftover space.
+function blockDesc(x0,z0,itemDimX,itemDimZ,nx,nz){
+  return {x0,z0,itemDimX,itemDimZ,nx,nz,dx:nx*itemDimX,dz:nz*itemDimZ};
+}
+
+function bestMixedLayout(dimX, dimZ, e1, e2){
+  const candidates = [];
+
+  const pureA = {nx:Math.floor(dimX/e1), nz:Math.floor(dimZ/e2)};
+  candidates.push({count:pureA.nx*pureA.nz, blocks:[blockDesc(0,0,e1,e2,pureA.nx,pureA.nz)], desc:`${pureA.nx}×${pureA.nz}`});
+
+  const pureB = {nx:Math.floor(dimX/e2), nz:Math.floor(dimZ/e1)};
+  candidates.push({count:pureB.nx*pureB.nz, blocks:[blockDesc(0,0,e2,e1,pureB.nx,pureB.nz)], desc:`${pureB.nx}×${pureB.nz}（旋转90°）`});
+
+  if(e1 !== e2){
+    // split along Z into two horizontal bands, each a different orientation
+    [[e1,e2],[e2,e1]].forEach(([oa,ob])=>{
+      const nz1 = Math.floor(dimZ/ob);
+      const usedZ1 = nz1*ob;
+      const remZ = dimZ - usedZ1;
+      const nx1 = Math.floor(dimX/oa);
+      const nz2 = Math.floor(remZ/oa);
+      const nx2 = Math.floor(dimX/ob);
+      if(nz1>0 && nz2>0){
+        const blocks = [blockDesc(0,0,oa,ob,nx1,nz1), blockDesc(0,usedZ1,ob,oa,nx2,nz2)];
+        candidates.push({count:nx1*nz1+nx2*nz2, blocks, desc:`主区 ${nx1}×${nz1} + 补边 ${nx2}×${nz2}（横竖混排）`});
+      }
+    });
+    // split along X into two vertical bands
+    [[e1,e2],[e2,e1]].forEach(([oa,ob])=>{
+      const nx1 = Math.floor(dimX/oa);
+      const usedX1 = nx1*oa;
+      const remX = dimX - usedX1;
+      const nz1 = Math.floor(dimZ/ob);
+      const nx2 = Math.floor(remX/ob);
+      const nz2 = Math.floor(dimZ/oa);
+      if(nx1>0 && nx2>0){
+        const blocks = [blockDesc(0,0,oa,ob,nx1,nz1), blockDesc(usedX1,0,ob,oa,nx2,nz2)];
+        candidates.push({count:nx1*nz1+nx2*nz2, blocks, desc:`主区 ${nx1}×${nz1} + 补边 ${nx2}×${nz2}（横竖混排）`});
+      }
+    });
+  }
+
+  candidates.sort((a,b)=> b.count - a.count);
+  return candidates[0];
 }
 
 // ---------- Pallet ----------
@@ -697,16 +770,8 @@ function calcPallet(){
     return;
   }
 
-  // orientation A: carton L along pallet L
-  const nxA = Math.floor(pl/cl), nyA = Math.floor(pw/cw);
-  // orientation B: carton rotated 90 deg
-  const nxB = Math.floor(pl/cw), nyB = Math.floor(pw/cl);
-
-  let orient, nx, ny, useL, useW;
-  if(nxA*nyA >= nxB*nyB){ orient='A (长边沿卡板长边)'; nx=nxA; ny=nyA; useL=cl; useW=cw; }
-  else { orient='B (长边沿卡板宽边，旋转90°)'; nx=nxB; ny=nyB; useL=cw; useW=cl; }
-
-  const perLayer = nx*ny;
+  const layout = bestMixedLayout(pl, pw, cl, cw);
+  const perLayer = layout.count;
   let layers = Math.floor(pmaxH/ch);
   let totalCartons = perLayer*layers;
 
@@ -724,7 +789,7 @@ function calcPallet(){
   const totalPcs = totalCartons*n;
   const totalWeight = totalCartons*cartonWt;
 
-  palletResult = {pl,pw,pmaxH, cl,cw,ch, nx,ny,perLayer,layers,totalCartons, footprintUtil, volUtil, totalPcs, totalWeight, orient, weightLimited, useL, useW, cartonWt};
+  palletResult = {pl,pw,pmaxH, cl,cw,ch, layout, perLayer,layers,totalCartons, footprintUtil, volUtil, totalPcs, totalWeight, weightLimited, cartonWt};
 
   renderPalletResult();
   renderSummary();
@@ -736,17 +801,17 @@ function renderPalletResult(){
   const effectiveLayers = r.weightLimited ? Math.max(1, Math.ceil(r.totalCartons/r.perLayer)) : r.layers;
   const iso = renderIsoScene({
     outerL:r.pl, outerW:r.pw, outerH:r.pmaxH,
-    itemL:r.useL, itemW:r.useW, itemH:r.ch,
-    nx:r.nx, nz:r.ny, ny:effectiveLayers,
+    blocks:r.layout.blocks, itemH:r.ch, ny:effectiveLayers,
     targetW:440, targetH:340
   });
+  const mixedNote = r.layout.blocks.length>1 ? '<div class="note flag">采用横竖混排（补边区旋转90°）以填满卡板剩余空间。</div>' : '';
   wrap.innerHTML = `
     <div class="readout-grid">
-      <div class="readout key"><div class="rlabel">每层箱数</div><div class="rvalue">${r.nx}×${r.ny} = ${r.perLayer}</div><div class="rsub">层内排列</div></div>
+      <div class="readout key"><div class="rlabel">每层箱数</div><div class="rvalue">${r.perLayer}</div><div class="rsub">${r.layout.desc}</div></div>
       <div class="readout"><div class="rlabel">层数</div><div class="rvalue">${r.layers}</div><div class="rsub">堆高 ${fmt(r.pmaxH,0)}mm 限制</div></div>
       <div class="readout key"><div class="rlabel">每托总箱数</div><div class="rvalue">${r.totalCartons}</div><div class="rsub">${r.weightLimited ? '⚠ 受载重限制' : '仅受堆高限制'}</div></div>
       <div class="readout"><div class="rlabel">每托总数量</div><div class="rvalue">${r.totalPcs}</div><div class="rsub">pcs（彩盒个数）</div></div>
-      <div class="readout ${r.footprintUtil>0.85?'key':''}"><div class="rlabel">底面利用率</div><div class="rvalue">${pct(r.footprintUtil)}</div><div class="rsub">摆放方向：${r.orient}</div></div>
+      <div class="readout ${r.footprintUtil>0.85?'key':''}"><div class="rlabel">底面利用率</div><div class="rvalue">${pct(r.footprintUtil)}</div><div class="rsub">${r.layout.desc}</div></div>
       <div class="readout ${r.volUtil>0.6?'key':''}"><div class="rlabel">体积利用率</div><div class="rvalue">${pct(r.volUtil)}</div><div class="rsub">含堆高空间</div></div>
       <div class="readout"><div class="rlabel">每托毛重</div><div class="rvalue">${fmt(r.totalWeight,1)}</div><div class="rsub">kg</div></div>
     </div>
@@ -754,9 +819,10 @@ function renderPalletResult(){
       <div class="view">
         <div class="view-label">等轴视图 Isometric View</div>
         ${iso}
-        <div class="iso-caption">每个小方块 = 1 个外箱（${fmt(r.useL,0)}×${fmt(r.useW,0)}×${fmt(r.ch,0)}mm）</div>
+        <div class="iso-caption">每个小方块 = 1 个外箱（${fmt(r.cl,0)}×${fmt(r.cw,0)}×${fmt(r.ch,0)}mm，深色补边区已旋转90°）</div>
       </div>
     </div>
+    ${mixedNote}
   `;
 }
 
@@ -793,29 +859,25 @@ function calcContainer(){
       return;
     }
     const pl = palletResult.pl, pw = palletResult.pw;
-    const nxA = Math.floor(ctl/pl), nyA = Math.floor(ctw/pw);
-    const nxB = Math.floor(ctl/pw), nyB = Math.floor(ctw/pl);
-    let nx,ny,useL,useW,orient;
-    if(nxA*nyA >= nxB*nyB){ nx=nxA; ny=nyA; useL=pl; useW=pw; orient='卡板长边沿货柜长边'; }
-    else { nx=nxB; ny=nyB; useL=pw; useW=pl; orient='卡板长边沿货柜宽边(旋转90°)'; }
-    const palletsPerContainer = nx*ny;
+    const layout = bestMixedLayout(ctl, ctw, pl, pw);
+    const palletsPerContainer = layout.count;
     const cartonsTotal = palletsPerContainer*palletResult.totalCartons;
     const pcsTotal = palletsPerContainer*palletResult.totalPcs;
     const usedVol = palletsPerContainer * (palletResult.pl*palletResult.pw*(palletResult.pmaxH));
     const volUtil = usedVol/contVol;
-    const footprintUtil = (nx*ny*pl*pw)/(ctl*ctw);
+    const footprintUtil = (palletsPerContainer*pl*pw)/(ctl*ctw);
     const totalWeight = palletsPerContainer*palletResult.totalWeight;
 
     const iso = renderIsoScene({
       outerL:ctl, outerW:ctw, outerH:cth,
-      itemL:useL, itemW:useW, itemH:palletResult.pmaxH,
-      nx:nx, nz:ny, ny:1,
+      blocks:layout.blocks, itemH:palletResult.pmaxH, ny:1,
       targetW:520, targetH:320
     });
+    const mixedNote = layout.blocks.length>1 ? '<div class="note flag">采用横竖混排（补边区旋转90°）以填满货柜剩余空间。</div>' : '';
 
     document.getElementById('containerResultsWrap').innerHTML = `
       <div class="readout-grid">
-        <div class="readout key"><div class="rlabel">可装卡板数</div><div class="rvalue">${nx}×${ny} = ${palletsPerContainer}</div><div class="rsub">${orient}</div></div>
+        <div class="readout key"><div class="rlabel">可装卡板数</div><div class="rvalue">${palletsPerContainer}</div><div class="rsub">${layout.desc}</div></div>
         <div class="readout key"><div class="rlabel">总外箱数</div><div class="rvalue">${cartonsTotal}</div><div class="rsub">= ${palletsPerContainer} 托 × ${palletResult.totalCartons} 箱/托</div></div>
         <div class="readout"><div class="rlabel">总数量</div><div class="rvalue">${pcsTotal}</div><div class="rsub">pcs（彩盒个数）</div></div>
         <div class="readout ${footprintUtil>0.7?'key':''}"><div class="rlabel">地板利用率</div><div class="rvalue">${pct(footprintUtil)}</div><div class="rsub">卡板footprint / 货柜地板</div></div>
@@ -828,6 +890,7 @@ function calcContainer(){
           ${iso}
         </div>
       </div>
+      ${mixedNote}
     `;
   } else {
     // floor loading, direct cartons
@@ -838,28 +901,25 @@ function calcContainer(){
       document.getElementById('containerResultsWrap').innerHTML = '<div class="note flag">请检查外箱尺寸输入（STEP 02）。</div>';
       return;
     }
-    const nxA = Math.floor(ctl/cl), nyA = Math.floor(ctw/cw);
-    const nxB = Math.floor(ctl/cw), nyB = Math.floor(ctw/cl);
-    let nx,ny,useL,useW,orient;
-    if(nxA*nyA >= nxB*nyB){ nx=nxA; ny=nyA; useL=cl; useW=cw; orient='长边沿货柜长边'; }
-    else { nx=nxB; ny=nyB; useL=cw; useW=cl; orient='长边沿货柜宽边(旋转90°)'; }
+    const layout = bestMixedLayout(ctl, ctw, cl, cw);
+    const perLayer = layout.count;
     const nz = Math.floor(cth/ch);
-    const totalCartons = nx*ny*nz;
+    const totalCartons = perLayer*nz;
     const totalPcs = totalCartons*n;
     const totalWeight = totalCartons*cartonWt;
-    const footprintUtil = (nx*ny*cl*cw)/(ctl*ctw);
+    const footprintUtil = (perLayer*cl*cw)/(ctl*ctw);
     const volUtil = (totalCartons*cl*cw*ch)/contVol;
 
     const iso = renderIsoScene({
       outerL:ctl, outerW:ctw, outerH:cth,
-      itemL:useL, itemW:useW, itemH:ch,
-      nx:nx, nz:ny, ny:nz,
+      blocks:layout.blocks, itemH:ch, ny:nz,
       targetW:520, targetH:320
     });
+    const mixedNote = layout.blocks.length>1 ? '<div class="note flag">采用横竖混排（补边区旋转90°）以填满货柜地板剩余空间。</div>' : '';
 
     document.getElementById('containerResultsWrap').innerHTML = `
       <div class="readout-grid">
-        <div class="readout key"><div class="rlabel">每层箱数</div><div class="rvalue">${nx}×${ny} = ${nx*ny}</div><div class="rsub">${orient}</div></div>
+        <div class="readout key"><div class="rlabel">每层箱数</div><div class="rvalue">${perLayer}</div><div class="rsub">${layout.desc}</div></div>
         <div class="readout"><div class="rlabel">堆叠层数</div><div class="rvalue">${nz}</div><div class="rsub">货柜内高 ${fmt(cth,0)}mm 限制</div></div>
         <div class="readout key"><div class="rlabel">总外箱数</div><div class="rvalue">${totalCartons}</div><div class="rsub">散装地板直堆</div></div>
         <div class="readout"><div class="rlabel">总数量</div><div class="rvalue">${totalPcs}</div><div class="rsub">pcs（彩盒个数）</div></div>
@@ -873,6 +933,7 @@ function calcContainer(){
           ${iso}
         </div>
       </div>
+      ${mixedNote}
       <div class="note flag">⚠ 散装直堆通常无法承受满高压重，实际层数请结合纸箱抗压强度核实。</div>
     `;
   }
