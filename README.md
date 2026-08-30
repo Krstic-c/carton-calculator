@@ -6,6 +6,8 @@
 
 > 🔒 **隐私声明**：所有计算均在浏览器本地完成（原生 JS），不上传任何数据、不经过任何服务器或 API，可断网使用。
 
+🔗 在线使用：[https://krstic-c.github.io/local-mark/](https://krstic-c.github.io/carton-calculator/)
+
 ---
 
 ## 项目定位
