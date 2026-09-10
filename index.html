@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- 本文件是唯一源文件（single source of truth）。carton-pallet-calculator.html 是与本文件保持完全一致的发布/打包镜像副本——修改功能或样式时只编辑这里，改完后把本文件完整复制覆盖 carton-pallet-calculator.html（详见 CLAUDE.md「部署流程」）。 -->
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -424,6 +425,19 @@ let containerMode = 'pallet';
 function num(id){ const v = parseFloat(document.getElementById(id).value); return isNaN(v) ? 0 : v; }
 function fmt(v, d=1){ return Number(v).toFixed(d); }
 function pct(v){ return (v*100).toFixed(1) + '%'; }
+// basic HTML-escaping used as defense-in-depth wherever a value gets
+// interpolated into an innerHTML template. Inputs here are numeric (type=number),
+// so this is unlikely to ever matter in practice, but it's cheap insurance
+// against a future non-numeric field being added without updating the renderer.
+function esc(v){
+  return String(v).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+// wraps a numeric value: renders as "invalid" instead of NaN/Infinity if the
+// input was somehow non-finite, and always escapes the final string.
+function safeNum(v, formatter){
+  if(!isFinite(v)) return '—';
+  return esc(formatter(v));
+}
 
 // ---------- generalized arrangement search ----------
 // finds (a,b,c) grid arrangements with a*b*c >= N (allows partially-filled last
@@ -452,7 +466,11 @@ function calcOuterOptions(){
   const N = Math.round(num('target_n'));
   const margin = num('margin_mm');
   if(L<=0 || W<=0 || H<=0 || N<=0){
-    document.getElementById('outerOptionsWrap').innerHTML = '<div class="note flag">请输入有效的彩盒尺寸和数量。</div>';
+    document.getElementById('outerOptionsWrap').innerHTML = '<div class="note flag">请输入有效的彩盒尺寸和数量（均需大于 0）。</div>';
+    return;
+  }
+  if(margin<0){
+    document.getElementById('outerOptionsWrap').innerHTML = '<div class="note flag">放尺/余量不能为负数。</div>';
     return;
   }
   const edges = [L,W,H];
@@ -516,9 +534,9 @@ function renderOuterOptions(options){
   }
   let rows = options.map((o,i)=>`
     <tr data-idx="${i}" onclick="selectOuterOptionByIdx(${i})">
-      <td>${o.a} × ${o.b} × ${o.c}${o.capacity>o.N?` <span style="color:var(--ink-dim)">(空${o.capacity-o.N})</span>`:''}</td>
-      <td>${fmt(o.dimX,0)} × ${fmt(o.dimY,0)} × ${fmt(o.dimZ,0)} mm</td>
-      <td class="util">${pct(o.util)}</td>
+      <td>${esc(o.a)} × ${esc(o.b)} × ${esc(o.c)}${o.capacity>o.N?` <span style="color:var(--ink-dim)">(空${esc(o.capacity-o.N)})</span>`:''}</td>
+      <td>${esc(fmt(o.dimX,0))} × ${esc(fmt(o.dimY,0))} × ${esc(fmt(o.dimZ,0))} mm</td>
+      <td class="util">${esc(pct(o.util))}</td>
     </tr>`).join('');
   wrap.innerHTML = `
     <div class="group-label" style="margin-top:0;">推荐方案（点击选择，利用率从高到低）</div>
@@ -560,18 +578,18 @@ function drawOuterDiagram(opt){
     fillCount:opt.N,
     targetW:420, targetH:340
   });
-  const emptyNote = opt.capacity>opt.N ? `，其中 <b>${opt.capacity-opt.N}</b> 格留空（实际彩盒不足以填满整层/整列）` : '';
+  const emptyNote = opt.capacity>opt.N ? `，其中 <b>${esc(opt.capacity-opt.N)}</b> 格留空（实际彩盒不足以填满整层/整列）` : '';
   wrap.innerHTML = `
     <div class="readout-grid">
-      <div class="readout key"><div class="rlabel">外箱尺寸</div><div class="rvalue">${fmt(opt.dimX,0)}×${fmt(opt.dimY,0)}×${fmt(opt.dimZ,0)}</div><div class="rsub">mm (L×W×H)</div></div>
-      <div class="readout"><div class="rlabel">排列</div><div class="rvalue">${opt.a}×${opt.b}×${opt.c}</div><div class="rsub">格位 ${opt.capacity} 个，装 ${opt.N} 个彩盒</div></div>
-      <div class="readout key"><div class="rlabel">体积利用率</div><div class="rvalue">${pct(opt.util)}</div><div class="rsub">彩盒体积 / 外箱体积</div></div>
+      <div class="readout key"><div class="rlabel">外箱尺寸</div><div class="rvalue">${esc(fmt(opt.dimX,0))}×${esc(fmt(opt.dimY,0))}×${esc(fmt(opt.dimZ,0))}</div><div class="rsub">mm (L×W×H)</div></div>
+      <div class="readout"><div class="rlabel">排列</div><div class="rvalue">${esc(opt.a)}×${esc(opt.b)}×${esc(opt.c)}</div><div class="rsub">格位 ${esc(opt.capacity)} 个，装 ${esc(opt.N)} 个彩盒</div></div>
+      <div class="readout key"><div class="rlabel">体积利用率</div><div class="rvalue">${esc(pct(opt.util))}</div><div class="rsub">彩盒体积 / 外箱体积</div></div>
     </div>
     <div class="diagram-box">
       <div class="view">
         <div class="view-label">等轴视图 Isometric View</div>
         ${iso}
-        <div class="iso-caption">每个小方块 = 1 个彩盒（${opt.e0}×${opt.e1}×${opt.e2}mm）${emptyNote}</div>
+        <div class="iso-caption">每个小方块 = 1 个彩盒（${esc(opt.e0)}×${esc(opt.e1)}×${esc(opt.e2)}mm）${emptyNote}</div>
       </div>
     </div>
   `;
@@ -766,7 +784,15 @@ function calcPallet(){
   const pmaxWt = pmaxWtRaw === '' ? null : parseFloat(pmaxWtRaw);
 
   if(cl<=0||cw<=0||ch<=0||pl<=0||pw<=0||pmaxH<=0){
-    document.getElementById('palletResultsWrap').innerHTML = '<div class="note flag">请检查外箱与卡板尺寸输入。</div>';
+    document.getElementById('palletResultsWrap').innerHTML = '<div class="note flag">请检查外箱与卡板尺寸输入（均需大于 0）。</div>';
+    return;
+  }
+  if(n<=0){
+    document.getElementById('palletResultsWrap').innerHTML = '<div class="note flag">请输入有效的每箱数量 N（需大于 0）。</div>';
+    return;
+  }
+  if(pmaxWtRaw !== '' && (pmaxWt===null || isNaN(pmaxWt) || pmaxWt<=0)){
+    document.getElementById('palletResultsWrap').innerHTML = '<div class="note flag">最大载重需为大于 0 的数字，如不限请留空。</div>';
     return;
   }
 
@@ -807,19 +833,19 @@ function renderPalletResult(){
   const mixedNote = r.layout.blocks.length>1 ? '<div class="note flag">采用横竖混排（补边区旋转90°）以填满卡板剩余空间。</div>' : '';
   wrap.innerHTML = `
     <div class="readout-grid">
-      <div class="readout key"><div class="rlabel">每层箱数</div><div class="rvalue">${r.perLayer}</div><div class="rsub">${r.layout.desc}</div></div>
-      <div class="readout"><div class="rlabel">层数</div><div class="rvalue">${r.layers}</div><div class="rsub">堆高 ${fmt(r.pmaxH,0)}mm 限制</div></div>
-      <div class="readout key"><div class="rlabel">每托总箱数</div><div class="rvalue">${r.totalCartons}</div><div class="rsub">${r.weightLimited ? '⚠ 受载重限制' : '仅受堆高限制'}</div></div>
-      <div class="readout"><div class="rlabel">每托总数量</div><div class="rvalue">${r.totalPcs}</div><div class="rsub">pcs（彩盒个数）</div></div>
-      <div class="readout ${r.footprintUtil>0.85?'key':''}"><div class="rlabel">底面利用率</div><div class="rvalue">${pct(r.footprintUtil)}</div><div class="rsub">${r.layout.desc}</div></div>
-      <div class="readout ${r.volUtil>0.6?'key':''}"><div class="rlabel">体积利用率</div><div class="rvalue">${pct(r.volUtil)}</div><div class="rsub">含堆高空间</div></div>
-      <div class="readout"><div class="rlabel">每托毛重</div><div class="rvalue">${fmt(r.totalWeight,1)}</div><div class="rsub">kg</div></div>
+      <div class="readout key"><div class="rlabel">每层箱数</div><div class="rvalue">${esc(r.perLayer)}</div><div class="rsub">${esc(r.layout.desc)}</div></div>
+      <div class="readout"><div class="rlabel">层数</div><div class="rvalue">${esc(r.layers)}</div><div class="rsub">堆高 ${esc(fmt(r.pmaxH,0))}mm 限制</div></div>
+      <div class="readout key"><div class="rlabel">每托总箱数</div><div class="rvalue">${esc(r.totalCartons)}</div><div class="rsub">${r.weightLimited ? '⚠ 受载重限制' : '仅受堆高限制'}</div></div>
+      <div class="readout"><div class="rlabel">每托总数量</div><div class="rvalue">${esc(r.totalPcs)}</div><div class="rsub">pcs（彩盒个数）</div></div>
+      <div class="readout ${r.footprintUtil>0.85?'key':''}"><div class="rlabel">底面利用率</div><div class="rvalue">${esc(pct(r.footprintUtil))}</div><div class="rsub">${esc(r.layout.desc)}</div></div>
+      <div class="readout ${r.volUtil>0.6?'key':''}"><div class="rlabel">体积利用率</div><div class="rvalue">${esc(pct(r.volUtil))}</div><div class="rsub">含堆高空间</div></div>
+      <div class="readout"><div class="rlabel">每托毛重</div><div class="rvalue">${esc(fmt(r.totalWeight,1))}</div><div class="rsub">kg</div></div>
     </div>
     <div class="diagram-box">
       <div class="view">
         <div class="view-label">等轴视图 Isometric View</div>
         ${iso}
-        <div class="iso-caption">每个小方块 = 1 个外箱（${fmt(r.cl,0)}×${fmt(r.cw,0)}×${fmt(r.ch,0)}mm，深色补边区已旋转90°）</div>
+        <div class="iso-caption">每个小方块 = 1 个外箱（${esc(fmt(r.cl,0))}×${esc(fmt(r.cw,0))}×${esc(fmt(r.ch,0))}mm，深色补边区已旋转90°）</div>
       </div>
     </div>
     ${mixedNote}
@@ -877,12 +903,12 @@ function calcContainer(){
 
     document.getElementById('containerResultsWrap').innerHTML = `
       <div class="readout-grid">
-        <div class="readout key"><div class="rlabel">可装卡板数</div><div class="rvalue">${palletsPerContainer}</div><div class="rsub">${layout.desc}</div></div>
-        <div class="readout key"><div class="rlabel">总外箱数</div><div class="rvalue">${cartonsTotal}</div><div class="rsub">= ${palletsPerContainer} 托 × ${palletResult.totalCartons} 箱/托</div></div>
-        <div class="readout"><div class="rlabel">总数量</div><div class="rvalue">${pcsTotal}</div><div class="rsub">pcs（彩盒个数）</div></div>
-        <div class="readout ${footprintUtil>0.7?'key':''}"><div class="rlabel">地板利用率</div><div class="rvalue">${pct(footprintUtil)}</div><div class="rsub">卡板footprint / 货柜地板</div></div>
-        <div class="readout ${volUtil>0.5?'key':''}"><div class="rlabel">体积利用率</div><div class="rvalue">${pct(volUtil)}</div><div class="rsub">按卡板堆高计算</div></div>
-        <div class="readout"><div class="rlabel">预估总重</div><div class="rvalue">${fmt(totalWeight,0)}</div><div class="rsub">kg（不含卡板自重）</div></div>
+        <div class="readout key"><div class="rlabel">可装卡板数</div><div class="rvalue">${esc(palletsPerContainer)}</div><div class="rsub">${esc(layout.desc)}</div></div>
+        <div class="readout key"><div class="rlabel">总外箱数</div><div class="rvalue">${esc(cartonsTotal)}</div><div class="rsub">= ${esc(palletsPerContainer)} 托 × ${esc(palletResult.totalCartons)} 箱/托</div></div>
+        <div class="readout"><div class="rlabel">总数量</div><div class="rvalue">${esc(pcsTotal)}</div><div class="rsub">pcs（彩盒个数）</div></div>
+        <div class="readout ${footprintUtil>0.7?'key':''}"><div class="rlabel">地板利用率</div><div class="rvalue">${esc(pct(footprintUtil))}</div><div class="rsub">卡板footprint / 货柜地板</div></div>
+        <div class="readout ${volUtil>0.5?'key':''}"><div class="rlabel">体积利用率</div><div class="rvalue">${esc(pct(volUtil))}</div><div class="rsub">按卡板堆高计算</div></div>
+        <div class="readout"><div class="rlabel">预估总重</div><div class="rvalue">${esc(fmt(totalWeight,0))}</div><div class="rsub">kg（不含卡板自重）</div></div>
       </div>
       <div class="diagram-box">
         <div class="view">
@@ -898,7 +924,11 @@ function calcContainer(){
     const selfwt = num('ob_selfwt'), unitwt = num('ib_wt');
     const cartonWt = selfwt + n*unitwt;
     if(cl<=0||cw<=0||ch<=0){
-      document.getElementById('containerResultsWrap').innerHTML = '<div class="note flag">请检查外箱尺寸输入（STEP 02）。</div>';
+      document.getElementById('containerResultsWrap').innerHTML = '<div class="note flag">请检查外箱尺寸输入（STEP 02，均需大于 0）。</div>';
+      return;
+    }
+    if(n<=0){
+      document.getElementById('containerResultsWrap').innerHTML = '<div class="note flag">请输入有效的每箱数量 N（STEP 02，需大于 0）。</div>';
       return;
     }
     const layout = bestMixedLayout(ctl, ctw, cl, cw);
@@ -919,13 +949,13 @@ function calcContainer(){
 
     document.getElementById('containerResultsWrap').innerHTML = `
       <div class="readout-grid">
-        <div class="readout key"><div class="rlabel">每层箱数</div><div class="rvalue">${perLayer}</div><div class="rsub">${layout.desc}</div></div>
-        <div class="readout"><div class="rlabel">堆叠层数</div><div class="rvalue">${nz}</div><div class="rsub">货柜内高 ${fmt(cth,0)}mm 限制</div></div>
-        <div class="readout key"><div class="rlabel">总外箱数</div><div class="rvalue">${totalCartons}</div><div class="rsub">散装地板直堆</div></div>
-        <div class="readout"><div class="rlabel">总数量</div><div class="rvalue">${totalPcs}</div><div class="rsub">pcs（彩盒个数）</div></div>
-        <div class="readout ${footprintUtil>0.8?'key':''}"><div class="rlabel">地板利用率</div><div class="rvalue">${pct(footprintUtil)}</div></div>
-        <div class="readout ${volUtil>0.6?'key':''}"><div class="rlabel">体积利用率</div><div class="rvalue">${pct(volUtil)}</div></div>
-        <div class="readout"><div class="rlabel">预估总重</div><div class="rvalue">${fmt(totalWeight,0)}</div><div class="rsub">kg</div></div>
+        <div class="readout key"><div class="rlabel">每层箱数</div><div class="rvalue">${esc(perLayer)}</div><div class="rsub">${esc(layout.desc)}</div></div>
+        <div class="readout"><div class="rlabel">堆叠层数</div><div class="rvalue">${esc(nz)}</div><div class="rsub">货柜内高 ${esc(fmt(cth,0))}mm 限制</div></div>
+        <div class="readout key"><div class="rlabel">总外箱数</div><div class="rvalue">${esc(totalCartons)}</div><div class="rsub">散装地板直堆</div></div>
+        <div class="readout"><div class="rlabel">总数量</div><div class="rvalue">${esc(totalPcs)}</div><div class="rsub">pcs（彩盒个数）</div></div>
+        <div class="readout ${footprintUtil>0.8?'key':''}"><div class="rlabel">地板利用率</div><div class="rvalue">${esc(pct(footprintUtil))}</div></div>
+        <div class="readout ${volUtil>0.6?'key':''}"><div class="rlabel">体积利用率</div><div class="rvalue">${esc(pct(volUtil))}</div></div>
+        <div class="readout"><div class="rlabel">预估总重</div><div class="rvalue">${esc(fmt(totalWeight,0))}</div><div class="rsub">kg</div></div>
       </div>
       <div class="diagram-box">
         <div class="view">
@@ -947,11 +977,11 @@ function renderSummary(){
   let chain = `
     <div class="node"><div class="n">1</div><div class="l">外箱</div></div>
     <div class="arrow">→</div>
-    <div class="node"><div class="n">${n}</div><div class="l">pcs / 箱</div></div>
+    <div class="node"><div class="n">${esc(n)}</div><div class="l">pcs / 箱</div></div>
     <div class="arrow">→</div>
-    <div class="node"><div class="n">${palletResult.totalCartons}</div><div class="l">箱 / 托</div></div>
+    <div class="node"><div class="n">${esc(palletResult.totalCartons)}</div><div class="l">箱 / 托</div></div>
     <div class="arrow">→</div>
-    <div class="node"><div class="n">${palletResult.totalPcs}</div><div class="l">pcs / 托</div></div>
+    <div class="node"><div class="n">${esc(palletResult.totalPcs)}</div><div class="l">pcs / 托</div></div>
   `;
   document.getElementById('chainWrap').innerHTML = chain;
 }
