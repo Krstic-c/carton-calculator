@@ -745,21 +745,29 @@ function renderIsoScene(opts){
     [c.e,c.f],[c.f,c.g],[c.g,c.h],[c.h,c.e],
     [c.a,c.e],[c.b,c.f],[c.c,c.g],[c.d,c.h]
   ];
+  // drawn faint + behind the item faces (see return statement below): when
+  // items nearly fill the outer envelope, a bold wireframe on top of them
+  // reads as a second, competing set of lines right on top of the real box
+  // edges. Kept only as a soft reference outline for the margin sliver and
+  // for empty/sparse layouts where it's the only outline visible.
   let wireLines = edges.map(([p1,p2])=>
-    `<line x1="${p1[0].toFixed(1)}" y1="${p1[1].toFixed(1)}" x2="${p2[0].toFixed(1)}" y2="${p2[1].toFixed(1)}" stroke="var(--accent)" stroke-width="1" stroke-dasharray="4,3" opacity="0.9"/>`
+    `<line x1="${p1[0].toFixed(1)}" y1="${p1[1].toFixed(1)}" x2="${p2[0].toFixed(1)}" y2="${p2[1].toFixed(1)}" stroke="var(--accent)" stroke-width="0.75" stroke-dasharray="4,3" opacity="0.5"/>`
   ).join('');
 
-  // dimension labels along the three bottom-front edges
+  // dimension labels along the three bottom-front edges. A paper-colored
+  // halo (paint-order stroke) keeps the text legible regardless of what
+  // wireframe/item lines happen to sit underneath it.
+  const dimLabelStyle = 'font-family="var(--font-mono)" font-size="10" font-weight="500" fill="var(--accent)" stroke="var(--paper)" stroke-width="3" paint-order="stroke"';
   const dimLabels = `
-    <text x="${((c.a[0]+c.b[0])/2).toFixed(1)}" y="${(Math.max(c.a[1],c.b[1])+14).toFixed(1)}" font-family="var(--font-mono)" font-size="9.5" fill="var(--accent)" text-anchor="middle">L ${fmt(outerL,0)}</text>
-    <text x="${((c.a[0]+c.d[0])/2).toFixed(1)}" y="${((c.a[1]+c.d[1])/2-4).toFixed(1)}" font-family="var(--font-mono)" font-size="9.5" fill="var(--accent)" text-anchor="middle">W ${fmt(outerW,0)}</text>
-    <text x="${(c.a[0]-14).toFixed(1)}" y="${((c.a[1]+c.e[1])/2).toFixed(1)}" font-family="var(--font-mono)" font-size="9.5" fill="var(--accent)" text-anchor="end">H ${fmt(outerH,0)}</text>
+    <text x="${((c.a[0]+c.b[0])/2).toFixed(1)}" y="${(Math.max(c.a[1],c.b[1])+20).toFixed(1)}" ${dimLabelStyle} text-anchor="middle">L ${fmt(outerL,0)}</text>
+    <text x="${((c.a[0]+c.d[0])/2).toFixed(1)}" y="${((c.a[1]+c.d[1])/2-8).toFixed(1)}" ${dimLabelStyle} text-anchor="middle">W ${fmt(outerW,0)}</text>
+    <text x="${(c.a[0]-18).toFixed(1)}" y="${((c.a[1]+c.e[1])/2).toFixed(1)}" ${dimLabelStyle} text-anchor="end">H ${fmt(outerH,0)}</text>
   `;
 
   let itemsSvg = '';
   const total = blocks.reduce((s,b)=> s + b.nx*b.nz, 0) * ny;
   if(total>0 && total<=maxItems && itemH>0){
-    const gapFrac = 0.06;
+    const gapFrac = 0.1;
     const list = [];
     // fill order mirrors how you'd actually pack a carton: complete each
     // layer (k) before starting the next, block by block, row by row (j), left to right (i).
@@ -810,7 +818,7 @@ function renderIsoScene(opts){
     itemsSvg = gridLines + `<text x="${targetW/2}" y="${targetH-8}" font-family="var(--font-mono)" font-size="9.5" fill="var(--ink-dim)" text-anchor="middle">共 ${total} 格，数量过多，仅显示网格划分</text>`;
   }
 
-  return `<svg class="iso-svg" width="${targetW}" height="${targetH}" viewBox="0 0 ${targetW} ${targetH}">${itemsSvg}${wireLines}${dimLabels}</svg>`;
+  return `<svg class="iso-svg" width="${targetW}" height="${targetH}" viewBox="0 0 ${targetW} ${targetH}">${wireLines}${itemsSvg}${dimLabels}</svg>`;
 }
 
 // ================= mixed-orientation footprint packing =================
