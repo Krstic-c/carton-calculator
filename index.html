@@ -728,6 +728,53 @@ function isoPt(x,y,z,scale){
 
 function polyStr(pts){ return pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' '); }
 
+// shared bits for the two dimension-annotation drawers below: a pill-shaped
+// label (paper background, accent border/text) centered at (cx,cy).
+function dimPill(cx, cy, label){
+  const fontSize = 10.5;
+  const rectW = label.length*fontSize*0.62 + 14, rectH = fontSize + 10;
+  return `
+    <rect x="${(cx-rectW/2).toFixed(1)}" y="${(cy-rectH/2).toFixed(1)}" width="${rectW.toFixed(1)}" height="${rectH.toFixed(1)}" rx="${(rectH/2).toFixed(1)}" fill="var(--paper)" stroke="var(--accent)" stroke-width="1"/>
+    <text x="${cx.toFixed(1)}" y="${(cy+fontSize*0.35).toFixed(1)}" font-family="var(--font-mono)" font-size="${fontSize}" font-weight="500" fill="var(--accent)" text-anchor="middle">${label}</text>
+  `;
+}
+
+// Draws L and W as one horizontal "chain" dimension row below the whole
+// object: vertical extension lines drop from the three bottom-front corners
+// (d, a, b — the ground-plane "roof" shape a box's nearest corner always
+// projects to in isometric view) down to a shared baseline, with a tick at
+// each and the W/L spans labelled either side of the shared corner `a`.
+// A single shared horizontal reference (rather than offsetting each
+// diagonal edge by its own perpendicular) sidesteps having to guess which
+// side of a diagonal edge is "outward", and reads as a standard engineering
+// chain-dimension row. d.x < a.x < b.x always holds for these 3 corners
+// (d and b are the box's own depth/length corners relative to a), so the
+// two spans never overlap.
+function drawBaselineLW(d, a, b, labelW, labelL, baseY){
+  const GAP = 6, TICK = 6;
+  const extLine = (p)=> `<line x1="${p[0].toFixed(1)}" y1="${(p[1]+GAP).toFixed(1)}" x2="${p[0].toFixed(1)}" y2="${baseY.toFixed(1)}" stroke="var(--ink-dim)" stroke-width="0.75"/>`;
+  const tick = (x)=> `<line x1="${x.toFixed(1)}" y1="${(baseY-TICK/2).toFixed(1)}" x2="${x.toFixed(1)}" y2="${(baseY+TICK/2).toFixed(1)}" stroke="var(--accent)" stroke-width="1.25"/>`;
+  return extLine(d) + extLine(a) + extLine(b)
+    + `<line x1="${d[0].toFixed(1)}" y1="${baseY.toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${baseY.toFixed(1)}" stroke="var(--accent)" stroke-width="1.25"/>`
+    + tick(d[0]) + tick(a[0]) + tick(b[0])
+    + dimPill((d[0]+a[0])/2, baseY+18, labelW)
+    + dimPill((a[0]+b[0])/2, baseY+18, labelL);
+}
+
+// Draws H as a vertical bracket in the left margin: horizontal extension
+// lines from the two real corners (a, e) out to a shared vertical baseline,
+// a tick at each, and the label beside the bracket's midpoint.
+function drawBracketH(a, e, label, baseX){
+  const GAP = 6, TICK = 6;
+  const extLine = (p)=> `<line x1="${(p[0]-GAP).toFixed(1)}" y1="${p[1].toFixed(1)}" x2="${baseX.toFixed(1)}" y2="${p[1].toFixed(1)}" stroke="var(--ink-dim)" stroke-width="0.75"/>`;
+  const tick = (y)=> `<line x1="${(baseX-TICK/2).toFixed(1)}" y1="${y.toFixed(1)}" x2="${(baseX+TICK/2).toFixed(1)}" y2="${y.toFixed(1)}" stroke="var(--accent)" stroke-width="1.25"/>`;
+  const midY = (a[1]+e[1])/2;
+  return extLine(a) + extLine(e)
+    + `<line x1="${baseX.toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${baseX.toFixed(1)}" y2="${e[1].toFixed(1)}" stroke="var(--accent)" stroke-width="1.25"/>`
+    + tick(a[1]) + tick(e[1])
+    + dimPill(baseX-34, midY, label);
+}
+
 // renders a wireframe outer box (outerL x outerW x outerH, where H is vertical).
 // Footprint can be a single uniform grid (nx/nz/itemL/itemW) or a `blocks`
 // array of {x0,z0,nx,nz,itemDimX,itemDimZ} sub-regions with independent
@@ -742,7 +789,10 @@ function renderIsoScene(opts){
 
   const rawW = (outerL+outerW)*ISO_COS;
   const rawH = (outerL+outerW)*ISO_SIN + outerH;
-  const scale = Math.min((targetW*0.82)/rawW, (targetH*0.78)/rawH);
+  // leaves generous margin around the object (vs. a tight fit) so the
+  // outside-the-shape dimension lines/pills added below always have room
+  // and never get clipped by the SVG viewport edge.
+  const scale = Math.min((targetW*0.6)/rawW, (targetH*0.52)/rawH);
 
   function proj(x,y,z){ const [X,Y] = isoPt(x,y,z,scale); return [X,Y]; }
 
@@ -754,6 +804,9 @@ function renderIsoScene(opts){
   rawCorners.forEach(([X,Y])=>{ minX=Math.min(minX,X);maxX=Math.max(maxX,X);minY=Math.min(minY,Y);maxY=Math.max(maxY,Y); });
   const shift = [ -minX + (targetW-(maxX-minX))/2, -minY + (targetH-(maxY-minY))/2 ];
   function P(x,y,z){ const [X,Y]=proj(x,y,z); return [X+shift[0], Y+shift[1]]; }
+  // post-shift bounding box, used to anchor the L/W baseline and H bracket
+  // clear of the whole object regardless of which corner sticks out furthest.
+  const objMaxY = maxY+shift[1], objMinX = minX+shift[0];
 
   const c = {
     a:P(0,0,0), b:P(outerL,0,0), c:P(outerL,0,outerW), d:P(0,0,outerW),
@@ -773,15 +826,11 @@ function renderIsoScene(opts){
     `<line x1="${p1[0].toFixed(1)}" y1="${p1[1].toFixed(1)}" x2="${p2[0].toFixed(1)}" y2="${p2[1].toFixed(1)}" stroke="var(--accent)" stroke-width="0.75" stroke-dasharray="4,3" opacity="0.5"/>`
   ).join('');
 
-  // dimension labels along the three bottom-front edges. A paper-colored
-  // halo (paint-order stroke) keeps the text legible regardless of what
-  // wireframe/item lines happen to sit underneath it.
-  const dimLabelStyle = 'font-family="var(--font-mono)" font-size="10" font-weight="500" fill="var(--accent)" stroke="var(--paper)" stroke-width="3" paint-order="stroke"';
-  const dimLabels = `
-    <text x="${((c.a[0]+c.b[0])/2).toFixed(1)}" y="${(Math.max(c.a[1],c.b[1])+20).toFixed(1)}" ${dimLabelStyle} text-anchor="middle">L ${fmt(outerL,0)}</text>
-    <text x="${((c.a[0]+c.d[0])/2).toFixed(1)}" y="${((c.a[1]+c.d[1])/2-8).toFixed(1)}" ${dimLabelStyle} text-anchor="middle">W ${fmt(outerW,0)}</text>
-    <text x="${(c.a[0]-18).toFixed(1)}" y="${((c.a[1]+c.e[1])/2).toFixed(1)}" ${dimLabelStyle} text-anchor="end">H ${fmt(outerH,0)}</text>
-  `;
+  // dimension annotations for L/W (shared baseline below the object) and H
+  // (bracket to its left) — both fully outside the object with a leader back
+  // to the real corners, see drawBaselineLW()/drawBracketH().
+  const dimLabels = drawBaselineLW(c.d, c.a, c.b, `W ${fmt(outerW,0)}`, `L ${fmt(outerL,0)}`, objMaxY+20)
+    + drawBracketH(c.a, c.e, `H ${fmt(outerH,0)}`, objMinX-20);
 
   let itemsSvg = '';
   const total = blocks.reduce((s,b)=> s + b.nx*b.nz, 0) * ny;
