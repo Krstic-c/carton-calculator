@@ -739,40 +739,59 @@ function dimPill(cx, cy, label){
   `;
 }
 
-// Draws L and W as one horizontal "chain" dimension row below the whole
-// object: vertical extension lines drop from the three bottom-front corners
-// (d, a, b — the ground-plane "roof" shape a box's nearest corner always
-// projects to in isometric view) down to a shared baseline, with a tick at
-// each and the W/L spans labelled either side of the shared corner `a`.
-// A single shared horizontal reference (rather than offsetting each
-// diagonal edge by its own perpendicular) sidesteps having to guess which
-// side of a diagonal edge is "outward", and reads as a standard engineering
-// chain-dimension row. d.x < a.x < b.x always holds for these 3 corners
-// (d and b are the box's own depth/length corners relative to a), so the
-// two spans never overlap.
-function drawBaselineLW(d, a, b, labelW, labelL, baseY){
-  const GAP = 6, TICK = 6;
-  const extLine = (p)=> `<line x1="${p[0].toFixed(1)}" y1="${(p[1]+GAP).toFixed(1)}" x2="${p[0].toFixed(1)}" y2="${baseY.toFixed(1)}" stroke="var(--ink-dim)" stroke-width="0.75"/>`;
-  const tick = (x)=> `<line x1="${x.toFixed(1)}" y1="${(baseY-TICK/2).toFixed(1)}" x2="${x.toFixed(1)}" y2="${(baseY+TICK/2).toFixed(1)}" stroke="var(--accent)" stroke-width="1.25"/>`;
-  return extLine(d) + extLine(a) + extLine(b)
-    + `<line x1="${d[0].toFixed(1)}" y1="${baseY.toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${baseY.toFixed(1)}" stroke="var(--accent)" stroke-width="1.25"/>`
-    + tick(d[0]) + tick(a[0]) + tick(b[0])
-    + dimPill((d[0]+a[0])/2, baseY+18, labelW)
-    + dimPill((a[0]+b[0])/2, baseY+18, labelL);
+// Finds, for the edge p1->p2, whichever of the two perpendicular directions
+// needs the least clearance to get past every one of the box's 8 corners.
+// This matters because a 3D box's edge, seen in oblique/isometric
+// projection, often bulges out on BOTH sides at once (there's no single
+// obviously-"outward" direction) — but since a box is convex, if every
+// corner's projection onto a direction n (relative to p1) is <= some value
+// C, the WHOLE solid also projects <= C (any interior point is a convex
+// combination of corners, and a dot product is linear in its argument). So
+// offsetting a dimension line by anything > C in that direction is
+// mathematically guaranteed to clear the entire object — not just a guess
+// at which way looks "outside".
+function clearOffsetDir(p1, p2, allPts){
+  const dx = p2[0]-p1[0], dy = p2[1]-p1[1];
+  const len = Math.hypot(dx,dy) || 1;
+  const ux = dx/len, uy = dy/len;
+  let best = null;
+  [[-uy,ux],[uy,-ux]].forEach(n=>{
+    let clear = 0;
+    allPts.forEach(p=>{
+      const proj = n[0]*(p[0]-p1[0]) + n[1]*(p[1]-p1[1]);
+      if(proj>clear) clear = proj;
+    });
+    if(!best || clear<best.clear) best = {n, clear};
+  });
+  return best;
 }
 
-// Draws H as a vertical bracket in the left margin: horizontal extension
-// lines from the two real corners (a, e) out to a shared vertical baseline,
-// a tick at each, and the label beside the bracket's midpoint.
-function drawBracketH(a, e, label, baseX){
-  const GAP = 6, TICK = 6;
-  const extLine = (p)=> `<line x1="${(p[0]-GAP).toFixed(1)}" y1="${p[1].toFixed(1)}" x2="${baseX.toFixed(1)}" y2="${p[1].toFixed(1)}" stroke="var(--ink-dim)" stroke-width="0.75"/>`;
-  const tick = (y)=> `<line x1="${(baseX-TICK/2).toFixed(1)}" y1="${y.toFixed(1)}" x2="${(baseX+TICK/2).toFixed(1)}" y2="${y.toFixed(1)}" stroke="var(--accent)" stroke-width="1.25"/>`;
-  const midY = (a[1]+e[1])/2;
-  return extLine(a) + extLine(e)
-    + `<line x1="${baseX.toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${baseX.toFixed(1)}" y2="${e[1].toFixed(1)}" stroke="var(--accent)" stroke-width="1.25"/>`
-    + tick(a[1]) + tick(e[1])
-    + dimPill(baseX-34, midY, label);
+// Draws one engineering-style dimension: extension lines from the measured
+// edge's two corners out to a dimension line parallel to the edge (offset by
+// clearOffsetDir()'s guaranteed-clear distance), small end-ticks, and the
+// value in a pill label centered on the line — fully outside the object,
+// with a clear leader back to what it measures.
+function drawDimension(p1, p2, label, allPts){
+  const {n, clear} = clearOffsetDir(p1, p2, allPts);
+  const OFFSET = clear + 16, GAP = 3, TICK = 5;
+  const dx = p2[0]-p1[0], dy = p2[1]-p1[1];
+  const len = Math.hypot(dx,dy) || 1;
+  const ux = dx/len, uy = dy/len;
+  const off = (p,d)=> [p[0]+n[0]*d, p[1]+n[1]*d];
+  const g1 = off(p1,GAP), g2 = off(p2,GAP);
+  const l1 = off(p1,OFFSET), l2 = off(p2,OFFSET);
+
+  const extLines = `
+    <line x1="${g1[0].toFixed(1)}" y1="${g1[1].toFixed(1)}" x2="${l1[0].toFixed(1)}" y2="${l1[1].toFixed(1)}" stroke="var(--ink-dim)" stroke-width="0.75"/>
+    <line x1="${g2[0].toFixed(1)}" y1="${g2[1].toFixed(1)}" x2="${l2[0].toFixed(1)}" y2="${l2[1].toFixed(1)}" stroke="var(--ink-dim)" stroke-width="0.75"/>
+  `;
+  const tick = (p)=> `<line x1="${(p[0]+ux*TICK).toFixed(1)}" y1="${(p[1]+uy*TICK).toFixed(1)}" x2="${(p[0]-ux*TICK).toFixed(1)}" y2="${(p[1]-uy*TICK).toFixed(1)}" stroke="var(--accent)" stroke-width="1.25"/>`;
+  const dimLine = `
+    <line x1="${l1[0].toFixed(1)}" y1="${l1[1].toFixed(1)}" x2="${l2[0].toFixed(1)}" y2="${l2[1].toFixed(1)}" stroke="var(--accent)" stroke-width="1.25"/>
+    ${tick(l1)}${tick(l2)}
+  `;
+  const midX = (l1[0]+l2[0])/2, midY = (l1[1]+l2[1])/2;
+  return extLines + dimLine + dimPill(midX, midY, label);
 }
 
 // renders a wireframe outer box (outerL x outerW x outerH, where H is vertical).
@@ -804,9 +823,6 @@ function renderIsoScene(opts){
   rawCorners.forEach(([X,Y])=>{ minX=Math.min(minX,X);maxX=Math.max(maxX,X);minY=Math.min(minY,Y);maxY=Math.max(maxY,Y); });
   const shift = [ -minX + (targetW-(maxX-minX))/2, -minY + (targetH-(maxY-minY))/2 ];
   function P(x,y,z){ const [X,Y]=proj(x,y,z); return [X+shift[0], Y+shift[1]]; }
-  // post-shift bounding box, used to anchor the L/W baseline and H bracket
-  // clear of the whole object regardless of which corner sticks out furthest.
-  const objMaxY = maxY+shift[1], objMinX = minX+shift[0];
 
   const c = {
     a:P(0,0,0), b:P(outerL,0,0), c:P(outerL,0,outerW), d:P(0,0,outerW),
@@ -826,11 +842,21 @@ function renderIsoScene(opts){
     `<line x1="${p1[0].toFixed(1)}" y1="${p1[1].toFixed(1)}" x2="${p2[0].toFixed(1)}" y2="${p2[1].toFixed(1)}" stroke="var(--accent)" stroke-width="0.75" stroke-dasharray="4,3" opacity="0.5"/>`
   ).join('');
 
-  // dimension annotations for L/W (shared baseline below the object) and H
-  // (bracket to its left) — both fully outside the object with a leader back
-  // to the real corners, see drawBaselineLW()/drawBracketH().
-  const dimLabels = drawBaselineLW(c.d, c.a, c.b, `W ${fmt(outerW,0)}`, `L ${fmt(outerL,0)}`, objMaxY+20)
-    + drawBracketH(c.a, c.e, `H ${fmt(outerH,0)}`, objMinX-20);
+  // dimension annotations for L/W/H, each drawn fully outside the object
+  // with its own leader back to the real edge — see drawDimension() above.
+  // Deliberately NOT using corner `a` (or its diagonal opposite `g`): in
+  // this iso projection those two are always the "hidden" vertices of the
+  // box's silhouette (provably — they're the space-diagonal endpoints,
+  // which project inside the hexagonal outline formed by the other 6
+  // corners, for any L/W/H). A leader drawn from a hidden corner has to
+  // cross the visible faces just to get out, which is exactly what made
+  // the previous version look broken. d-c / b-c / b-f are edges of the same
+  // 3 lengths (L/W/H) between corners that are always on the visible
+  // outline, so leaders from them travel through open space instead.
+  const allPts = [c.a,c.b,c.c,c.d,c.e,c.f,c.g,c.h];
+  const dimLabels = drawDimension(c.d, c.c, `L ${fmt(outerL,0)}`, allPts)
+    + drawDimension(c.b, c.c, `W ${fmt(outerW,0)}`, allPts)
+    + drawDimension(c.b, c.f, `H ${fmt(outerH,0)}`, allPts);
 
   let itemsSvg = '';
   const total = blocks.reduce((s,b)=> s + b.nx*b.nz, 0) * ny;
