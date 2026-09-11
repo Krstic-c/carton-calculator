@@ -306,18 +306,18 @@
       <div class="inputs-col">
         <div class="group-label">彩盒（Inner Box）</div>
         <div class="field-row">
-          <div class="field"><label for="ib_l">长 L (mm)</label><input type="number" id="ib_l" value="200"></div>
-          <div class="field"><label for="ib_w">宽 W (mm)</label><input type="number" id="ib_w" value="120"></div>
-          <div class="field"><label for="ib_h">高 H (mm)</label><input type="number" id="ib_h" value="80"></div>
+          <div class="field"><label for="ib_l">长 L (mm)</label><input type="number" id="ib_l" placeholder="200"></div>
+          <div class="field"><label for="ib_w">宽 W (mm)</label><input type="number" id="ib_w" placeholder="120"></div>
+          <div class="field"><label for="ib_h">高 H (mm)</label><input type="number" id="ib_h" placeholder="80"></div>
         </div>
         <div class="field-row">
-          <div class="field"><label for="ib_wt">单个重量 (kg)</label><input type="number" id="ib_wt" value="0.5" step="0.01"></div>
+          <div class="field"><label for="ib_wt">单个重量 (kg)</label><input type="number" id="ib_wt" placeholder="0.5" step="0.01"></div>
         </div>
         <div class="divider"></div>
         <div class="group-label">推荐目标</div>
         <div class="field-row">
-          <div class="field"><label for="target_n">每箱数量 N (个)</label><input type="number" id="target_n" value="24"></div>
-          <div class="field"><label for="margin_mm">放尺 / 整体余量 (mm)</label><input type="number" id="margin_mm" value="4"></div>
+          <div class="field"><label for="target_n">每箱数量 N (个)</label><input type="number" id="target_n" placeholder="24"></div>
+          <div class="field"><label for="margin_mm">放尺 / 整体余量 (mm)</label><input type="number" id="margin_mm" placeholder="4"></div>
         </div>
         <div class="note">程序会搜索所有 <b>a×b×c ≥ N</b> 的排列组合（含无法整除、需留空位的情况），并尝试彩盒的全部 6 种摆放方向，找出外箱体积最小（利用率最高）的组合，而不再要求 N 必须被整除。</div>
         <button class="action" onclick="calcOuterOptions()">计算推荐外箱 →</button>
@@ -342,13 +342,13 @@
       <div class="inputs-col">
         <div class="group-label">外箱（Outer Carton，可手动修改）</div>
         <div class="field-row">
-          <div class="field"><label for="ob_l">长 L (mm)</label><input type="number" id="ob_l" value="410"></div>
-          <div class="field"><label for="ob_w">宽 W (mm)</label><input type="number" id="ob_w" value="368"></div>
-          <div class="field"><label for="ob_h">高 H (mm)</label><input type="number" id="ob_h" value="168"></div>
+          <div class="field"><label for="ob_l">长 L (mm)</label><input type="number" id="ob_l" placeholder="410"></div>
+          <div class="field"><label for="ob_w">宽 W (mm)</label><input type="number" id="ob_w" placeholder="368"></div>
+          <div class="field"><label for="ob_h">高 H (mm)</label><input type="number" id="ob_h" placeholder="168"></div>
         </div>
         <div class="field-row">
-          <div class="field"><label for="ob_n">每箱数量 N (个)</label><input type="number" id="ob_n" value="24"></div>
-          <div class="field"><label for="ob_selfwt">外箱自重 (kg)</label><input type="number" id="ob_selfwt" value="0.4" step="0.01"></div>
+          <div class="field"><label for="ob_n">每箱数量 N (个)</label><input type="number" id="ob_n" placeholder="24"></div>
+          <div class="field"><label for="ob_selfwt">外箱自重 (kg)</label><input type="number" id="ob_selfwt" placeholder="0.4" step="0.01"></div>
         </div>
         <div class="field-row">
           <label style="display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:11.5px;color:var(--ink-dim);cursor:pointer;">
@@ -374,11 +374,11 @@
           <button type="button" class="mini-btn" onclick="palletPresetMgr.deleteCurrent()">删除当前预设</button>
         </div>
         <div class="field-row">
-          <div class="field"><label for="pallet_l">卡板长 (mm)</label><input type="number" id="pallet_l" value="1200"></div>
-          <div class="field"><label for="pallet_w">卡板宽 (mm)</label><input type="number" id="pallet_w" value="1000"></div>
+          <div class="field"><label for="pallet_l">卡板长 (mm)</label><input type="number" id="pallet_l" placeholder="1200"></div>
+          <div class="field"><label for="pallet_w">卡板宽 (mm)</label><input type="number" id="pallet_w" placeholder="1000"></div>
         </div>
         <div class="field-row">
-          <div class="field"><label for="pallet_h">最大堆高 (mm，不含卡板)</label><input type="number" id="pallet_h" value="1500"></div>
+          <div class="field"><label for="pallet_h">最大堆高 (mm，不含卡板)</label><input type="number" id="pallet_h" placeholder="1500"></div>
           <div class="field"><label for="pallet_maxwt">最大载重 (kg，留空不限)</label><input type="number" id="pallet_maxwt" placeholder="不限"></div>
         </div>
         <button class="action" onclick="calcPallet()">计算卡板利用率 →</button>
@@ -416,9 +416,9 @@
           <button type="button" class="mini-btn" onclick="containerPresetMgr.deleteCurrent()">删除当前预设</button>
         </div>
         <div class="field-row">
-          <div class="field"><label for="ct_l">内长 (mm)</label><input type="number" id="ct_l" value="12032"></div>
-          <div class="field"><label for="ct_w">内宽 (mm)</label><input type="number" id="ct_w" value="2352"></div>
-          <div class="field"><label for="ct_h">内高 (mm)</label><input type="number" id="ct_h" value="2698"></div>
+          <div class="field"><label for="ct_l">内长 (mm)</label><input type="number" id="ct_l" placeholder="12032"></div>
+          <div class="field"><label for="ct_w">内宽 (mm)</label><input type="number" id="ct_w" placeholder="2352"></div>
+          <div class="field"><label for="ct_h">内高 (mm)</label><input type="number" id="ct_h" placeholder="2698"></div>
         </div>
         <div class="divider"></div>
         <div class="group-label">装载方式</div>
@@ -463,7 +463,17 @@ let containerResult = null;
 let containerMode = 'pallet';
 
 // ---------- helpers ----------
-function num(id){ const v = parseFloat(document.getElementById(id).value); return isNaN(v) ? 0 : v; }
+// reads a numeric input by id. Default/suggested numbers live in the
+// placeholder (grey ghost text) rather than a real value, so an untouched
+// field can be typed into immediately without deleting anything first; this
+// falls back to parsing the placeholder only when the field is genuinely
+// empty, so the untouched default still behaves as if it were "really" there.
+function num(id){
+  const el = document.getElementById(id);
+  const raw = el.value !== '' ? el.value : el.placeholder;
+  const v = parseFloat(raw);
+  return isNaN(v) ? 0 : v;
+}
 function fmt(v, d=1){ return Number(v).toFixed(d); }
 function pct(v){ return (v*100).toFixed(1) + '%'; }
 // basic HTML-escaping used as defense-in-depth wherever a value gets
@@ -668,11 +678,15 @@ function selectOuterOption(opt, allOptions){
   const row = document.querySelector(`#optsBody tr[data-idx="${idx}"]`);
   if(row) row.classList.add('selected');
 
-  // populate stage 2 fields
-  document.getElementById('ob_l').value = Math.round(opt.dimX);
-  document.getElementById('ob_w').value = Math.round(opt.dimY);
-  document.getElementById('ob_h').value = Math.round(opt.dimZ);
-  document.getElementById('ob_n').value = opt.N;
+  // populate stage 2 fields as placeholders, not real values: this is a
+  // suggestion the user can accept as-is or type over directly, without
+  // first deleting the recommended number. If the user already typed a
+  // custom override into one of these, it's left alone (only its
+  // placeholder — invisible while a real value is present — updates).
+  document.getElementById('ob_l').placeholder = Math.round(opt.dimX);
+  document.getElementById('ob_w').placeholder = Math.round(opt.dimY);
+  document.getElementById('ob_h').placeholder = Math.round(opt.dimZ);
+  document.getElementById('ob_n').placeholder = opt.N;
 
   drawOuterDiagram(opt);
 }
@@ -940,8 +954,10 @@ function applyPalletPreset(){
   const val = document.getElementById('pallet_preset').value;
   if(val === 'custom') return;
   const [l,w] = val.split(',').map(Number);
-  document.getElementById('pallet_l').value = l;
-  document.getElementById('pallet_w').value = w;
+  // placeholder, not value — same reasoning as selectOuterOption(): lets the
+  // user type a tweak directly over the preset without deleting it first.
+  document.getElementById('pallet_l').placeholder = l;
+  document.getElementById('pallet_w').placeholder = w;
 }
 
 function calcPallet(){
@@ -1039,9 +1055,10 @@ function applyContainerPreset(){
   const val = document.getElementById('container_preset').value;
   if(val === 'custom') return;
   const [l,w,h] = val.split(',').map(Number);
-  document.getElementById('ct_l').value = l;
-  document.getElementById('ct_w').value = w;
-  document.getElementById('ct_h').value = h;
+  // placeholder, not value — see selectOuterOption() for why.
+  document.getElementById('ct_l').placeholder = l;
+  document.getElementById('ct_w').placeholder = w;
+  document.getElementById('ct_h').placeholder = h;
 }
 
 function setContainerMode(mode){
