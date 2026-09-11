@@ -260,6 +260,24 @@
   .chain .arrow{color:var(--ink-dim);font-size:16px;}
 
   footer{text-align:center;color:var(--ink-dim);font-family:var(--font-mono);font-size:10.5px;margin-top:30px;line-height:1.7;}
+
+  button.mini-btn{
+    background:var(--paper); color:var(--ink-dim);
+    border:1px solid var(--line-soft);
+    font-family:var(--font-mono); font-size:10.5px;
+    padding:6px 8px; cursor:pointer; white-space:nowrap;
+  }
+  button.mini-btn:hover{color:var(--ink); border-color:var(--line);}
+  .field-row > button.mini-btn{flex:1;}
+  .summary-actions{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+
+  @media print{
+    body{padding:0;}
+    .inputs-col, .no-print, footer{display:none !important;}
+    .stage-body{grid-template-columns:1fr !important;}
+    .stage{break-inside:avoid; margin-bottom:14px;}
+    .titleblock, .summary{break-inside:avoid;}
+  }
 </style>
 </head>
 <body>
@@ -347,6 +365,10 @@
           </div>
         </div>
         <div class="field-row">
+          <button type="button" class="mini-btn" onclick="palletPresetMgr.saveCurrent()">＋ 存为常用预设</button>
+          <button type="button" class="mini-btn" onclick="palletPresetMgr.deleteCurrent()">删除当前预设</button>
+        </div>
+        <div class="field-row">
           <div class="field"><label for="pallet_l">卡板长 (mm)</label><input type="number" id="pallet_l" value="1200"></div>
           <div class="field"><label for="pallet_w">卡板宽 (mm)</label><input type="number" id="pallet_w" value="1000"></div>
         </div>
@@ -385,6 +407,10 @@
           </div>
         </div>
         <div class="field-row">
+          <button type="button" class="mini-btn" onclick="containerPresetMgr.saveCurrent()">＋ 存为常用预设</button>
+          <button type="button" class="mini-btn" onclick="containerPresetMgr.deleteCurrent()">删除当前预设</button>
+        </div>
+        <div class="field-row">
           <div class="field"><label for="ct_l">内长 (mm)</label><input type="number" id="ct_l" value="12032"></div>
           <div class="field"><label for="ct_w">内宽 (mm)</label><input type="number" id="ct_w" value="2352"></div>
           <div class="field"><label for="ct_h">内高 (mm)</label><input type="number" id="ct_h" value="2698"></div>
@@ -395,7 +421,12 @@
           <button id="mode_pallet_btn" class="active" onclick="setContainerMode('pallet')">按卡板装载</button>
           <button id="mode_floor_btn" onclick="setContainerMode('floor')">地板散装（无卡板）</button>
         </div>
-        <div class="note" id="containerModeNote">先在 STEP 02 计算出卡板方案，再按卡板整齐装入货柜（通常单层，如需双层堆叠可自行乘 2）。</div>
+        <div class="field-row" id="stackOption">
+          <label style="display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:11.5px;color:var(--ink-dim);cursor:pointer;">
+            <input type="checkbox" id="allow_stack" onchange="calcContainer()" style="width:auto;"> 货柜内允许卡板堆叠（层数按内高自动计算，勾选前请确认包装可承重）
+          </label>
+        </div>
+        <div class="note" id="containerModeNote">先在 STEP 02 计算出卡板方案，再按卡板整齐装入货柜（通常单层；如底部包装能承重，可勾选上方"允许堆叠"）。</div>
         <button class="action" onclick="calcContainer()">计算货柜利用率 →</button>
       </div>
       <div class="results-col" id="containerResultsWrap">
@@ -408,6 +439,10 @@
   <div class="summary" id="summaryWrap" style="display:none;">
     <h3>汇总链路 Summary Chain</h3>
     <div class="chain" id="chainWrap"></div>
+    <div class="summary-actions no-print">
+      <button type="button" class="mini-btn" id="copySummaryBtn" onclick="copySummary()">复制文字摘要</button>
+      <button type="button" class="mini-btn" id="printBtn" onclick="window.print()">打印 / 导出 PDF →</button>
+    </div>
   </div>
 
   <footer>本工具计算结果基于矩形整层网格排列的近似值，仅供参考；实际装箱请结合托盘伸缩、纸箱抗压、集装箱门洞尺寸等因素复核。</footer>
@@ -419,6 +454,7 @@ document.getElementById('tbDate').textContent = new Date().toISOString().slice(0
 // ---------- state ----------
 let selectedOuterOption = null; // {a,b,c, dimX,dimY,dimZ, N, util}
 let palletResult = null;
+let containerResult = null;
 let containerMode = 'pallet';
 
 // ---------- helpers ----------
@@ -447,6 +483,64 @@ function readoutCard(label, value, sub, variant){
   const subHtml = sub ? `<div class="rsub">${sub}</div>` : '';
   return `<div class="readout${cls}"><div class="rlabel">${label}</div><div class="rvalue">${value}</div>${subHtml}</div>`;
 }
+
+// ---------- localStorage-backed custom presets ----------
+// Only pallet and container specs get saveable presets, not the carton/outer
+// box: those vary per product, while a factory's pallet/container specs are
+// usually fixed, so they're the ones worth remembering across sessions.
+function loadPresets(key){
+  try{ return JSON.parse(localStorage.getItem(key)) || []; }catch(e){ return []; }
+}
+function savePresets(key, list){
+  try{ localStorage.setItem(key, JSON.stringify(list)); }catch(e){ /* storage unavailable (private mode/quota) - preset just won't persist */ }
+}
+function makePresetManager(key, selectId, fields){
+  function refresh(){
+    const list = loadPresets(key);
+    const sel = document.getElementById(selectId);
+    Array.from(sel.querySelectorAll('option[data-custom="1"]')).forEach(o=>o.remove());
+    const customOption = sel.querySelector('option[value="custom"]');
+    list.forEach((p,i)=>{
+      const opt = document.createElement('option');
+      opt.value = fields.map(f=>p[f.field]).join(',');
+      opt.textContent = `★ ${p.name}`;
+      opt.dataset.custom = '1';
+      opt.dataset.idx = i;
+      sel.insertBefore(opt, customOption);
+    });
+  }
+  return {
+    refresh,
+    saveCurrent(){
+      const values = {};
+      for(const f of fields){
+        const v = num(f.id);
+        if(v<=0){ alert('请先输入有效的尺寸再保存。'); return; }
+        values[f.field] = v;
+      }
+      const name = prompt('给这个预设起个名字（比如"工厂常用卡板"）：');
+      if(!name) return;
+      const list = loadPresets(key);
+      list.push({name, ...values});
+      savePresets(key, list);
+      refresh();
+      document.getElementById(selectId).value = fields.map(f=>values[f.field]).join(',');
+    },
+    deleteCurrent(){
+      const sel = document.getElementById(selectId);
+      const opt = sel.selectedOptions[0];
+      if(!opt || opt.dataset.custom !== '1'){ alert('当前选中的不是自定义预设，无法删除。'); return; }
+      if(!confirm(`删除预设「${opt.textContent.replace(/^★ /,'')}」？`)) return;
+      const list = loadPresets(key);
+      list.splice(Number(opt.dataset.idx), 1);
+      savePresets(key, list);
+      refresh();
+      sel.value = 'custom';
+    }
+  };
+}
+const palletPresetMgr = makePresetManager('cc_pallet_presets_v1', 'pallet_preset', [{id:'pallet_l',field:'l'},{id:'pallet_w',field:'w'}]);
+const containerPresetMgr = makePresetManager('cc_container_presets_v1', 'container_preset', [{id:'ct_l',field:'l'},{id:'ct_w',field:'w'},{id:'ct_h',field:'h'}]);
 
 // ---------- generalized arrangement search ----------
 // finds (a,b,c) grid arrangements with a*b*c >= N (allows partially-filled last
@@ -901,8 +995,9 @@ function setContainerMode(mode){
   containerMode = mode;
   document.getElementById('mode_pallet_btn').classList.toggle('active', mode==='pallet');
   document.getElementById('mode_floor_btn').classList.toggle('active', mode==='floor');
+  document.getElementById('stackOption').style.display = mode==='pallet' ? 'flex' : 'none';
   document.getElementById('containerModeNote').textContent = mode==='pallet'
-    ? '先在 STEP 02 计算出卡板方案，再按卡板整齐装入货柜（通常单层，如需双层堆叠可自行乘 2）。'
+    ? '先在 STEP 02 计算出卡板方案，再按卡板整齐装入货柜（通常单层；如底部包装能承重，可勾选上方"允许堆叠"）。'
     : '不使用卡板，外箱直接按网格方式铺满货柜地板并堆叠到顶（理论值，实际请预留装卸操作空间）。';
 }
 
@@ -920,27 +1015,35 @@ function calcContainer(){
       return;
     }
     const pl = palletResult.pl, pw = palletResult.pw;
+    if(palletResult.pmaxH > cth){
+      document.getElementById('containerResultsWrap').innerHTML = '<div class="note flag">STEP 02 设置的卡板堆高超过了货柜内高，一层都放不进去，请检查卡板堆高或货柜内高设置。</div>';
+      return;
+    }
     const layout = bestMixedLayout(ctl, ctw, pl, pw);
-    const palletsPerContainer = layout.count;
-    if(palletsPerContainer <= 0){
+    const palletsFootprint = layout.count;
+    if(palletsFootprint <= 0){
       document.getElementById('containerResultsWrap').innerHTML = '<div class="note flag">卡板尺寸超过货柜地板尺寸，一个都放不下，请检查卡板与货柜尺寸输入。</div>';
       return;
     }
+    const allowStack = document.getElementById('allow_stack').checked;
+    const stackLayers = allowStack ? Math.max(1, Math.floor(cth/palletResult.pmaxH)) : 1;
+    const palletsPerContainer = palletsFootprint*stackLayers;
     const cartonsTotal = palletsPerContainer*palletResult.totalCartons;
     const pcsTotal = palletsPerContainer*palletResult.totalPcs;
     const usedVol = palletsPerContainer * (palletResult.pl*palletResult.pw*(palletResult.pmaxH));
     const volUtil = usedVol/contVol;
-    const footprintUtil = (palletsPerContainer*pl*pw)/(ctl*ctw);
+    const footprintUtil = (palletsFootprint*pl*pw)/(ctl*ctw);
     const totalWeight = palletsPerContainer*palletResult.totalWeight;
 
     const iso = renderIsoScene({
       outerL:ctl, outerW:ctw, outerH:cth,
-      blocks:layout.blocks, itemH:palletResult.pmaxH, ny:1,
+      blocks:layout.blocks, itemH:palletResult.pmaxH, ny:stackLayers,
       targetW:520, targetH:320
     });
     const mixedNote = layout.blocks.length>1 ? '<div class="note flag">采用横竖混排（补边区旋转90°）以填满货柜剩余空间。</div>' : '';
+    const stackNote = stackLayers>1 ? `<div class="note flag">⚠ 已按货柜内高自动计算堆叠 ${esc(stackLayers)} 层，实际是否可行取决于底层卡板货物的抗压强度与稳定性，请与工厂确认包装能否承重堆叠。</div>` : '';
     const readouts1 = [
-      readoutCard('可装卡板数', esc(palletsPerContainer), esc(layout.desc), 'key'),
+      readoutCard('可装卡板数', esc(palletsPerContainer), stackLayers>1 ? `${esc(layout.desc)}，堆 ${esc(stackLayers)} 层` : esc(layout.desc), 'key'),
       readoutCard('总外箱数', esc(cartonsTotal), `= ${esc(palletsPerContainer)} 托 × ${esc(palletResult.totalCartons)} 箱/托`, 'key'),
       readoutCard('总数量', esc(pcsTotal), 'pcs（彩盒个数）', ''),
       readoutCard('地板利用率', esc(pct(footprintUtil)), '卡板footprint / 货柜地板', footprintUtil>0.7?'key':''),
@@ -957,7 +1060,9 @@ function calcContainer(){
         </div>
       </div>
       ${mixedNote}
+      ${stackNote}
     `;
+    containerResult = {mode:'pallet', ctl,ctw,cth, palletsFootprint, stackLayers, palletsPerContainer, cartonsTotal, pcsTotal, footprintUtil, volUtil, totalWeight};
   } else {
     // floor loading, direct cartons
     const cl = num('ob_l'), cw = num('ob_w'), ch = num('ob_h'), n = num('ob_n');
@@ -1011,6 +1116,7 @@ function calcContainer(){
       ${mixedNote}
       <div class="note flag">⚠ 散装直堆通常无法承受满高压重，实际层数请结合纸箱抗压强度核实。</div>
     `;
+    containerResult = {mode:'floor', ctl,ctw,cth, perLayer, nz, totalCartons, totalPcs, footprintUtil, volUtil, totalWeight};
   }
   renderSummary();
 }
@@ -1031,7 +1137,63 @@ function renderSummary(){
   document.getElementById('chainWrap').innerHTML = chain;
 }
 
+// ---------- copy-to-clipboard summary (plain text, safe for email/IM) ----------
+function buildSummaryText(){
+  const lines = ['装箱方案汇总 Summary'];
+  if(selectedOuterOption){
+    const o = selectedOuterOption;
+    lines.push(`彩盒 Inner Box：${num('ib_l')}×${num('ib_w')}×${num('ib_h')} mm，${num('ib_wt')} kg/个`);
+    lines.push(`外箱 Outer Carton：${fmt(o.dimX,0)}×${fmt(o.dimY,0)}×${fmt(o.dimZ,0)} mm，${o.N} 个/箱（排列 ${o.a}×${o.b}×${o.c}，体积利用率 ${pct(o.util)}）`);
+  }
+  if(palletResult){
+    const r = palletResult;
+    lines.push(`卡板 Pallet：${r.pl}×${r.pw} mm，每托 ${r.perLayer}×${r.layers}=${r.totalCartons} 箱（${r.totalPcs} pcs），毛重 ${fmt(r.totalWeight,1)} kg，体积利用率 ${pct(r.volUtil)}`);
+  }
+  if(containerResult){
+    const c = containerResult;
+    if(c.mode === 'pallet'){
+      const stackTxt = c.stackLayers>1 ? `，堆 ${c.stackLayers} 层` : '';
+      lines.push(`货柜 Container：${c.ctl}×${c.ctw}×${c.cth} mm，按卡板装载 ${c.palletsPerContainer} 托${stackTxt}=${c.cartonsTotal} 箱（${c.pcsTotal} pcs），体积利用率 ${pct(c.volUtil)}`);
+    } else {
+      lines.push(`货柜 Container：${c.ctl}×${c.ctw}×${c.cth} mm，地板散装 ${c.perLayer} 箱/层×${c.nz} 层=${c.totalCartons} 箱（${c.totalPcs} pcs），体积利用率 ${pct(c.volUtil)}`);
+    }
+  }
+  lines.push('—— 以上为近似计算结果，仅供参考 ——');
+  return lines.join('\n');
+}
+
+function fallbackCopyText(text, done){
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  let ok = false;
+  try{ ok = document.execCommand('copy'); }catch(e){ ok = false; }
+  document.body.removeChild(ta);
+  done(ok);
+}
+
+function copySummary(){
+  const text = buildSummaryText();
+  const btn = document.getElementById('copySummaryBtn');
+  function done(ok){
+    if(!btn) return;
+    const original = '复制文字摘要';
+    btn.textContent = ok ? '已复制 ✓' : '复制失败，请手动选择文字';
+    setTimeout(()=>{ btn.textContent = original; }, 1600);
+  }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(()=>done(true)).catch(()=>fallbackCopyText(text, done));
+  } else {
+    fallbackCopyText(text, done);
+  }
+}
+
 // init: run once with defaults
+palletPresetMgr.refresh();
+containerPresetMgr.refresh();
 calcOuterOptions();
 </script>
 </body>
