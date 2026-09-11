@@ -350,6 +350,11 @@
           <div class="field"><label for="ob_n">每箱数量 N (个)</label><input type="number" id="ob_n" value="24"></div>
           <div class="field"><label for="ob_selfwt">外箱自重 (kg)</label><input type="number" id="ob_selfwt" value="0.4" step="0.01"></div>
         </div>
+        <div class="field-row">
+          <label style="display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:11.5px;color:var(--ink-dim);cursor:pointer;">
+            <input type="checkbox" id="allow_rotate" onchange="calcPallet()" style="width:auto;"> 允许外箱侧放/倒放（若产品和包装能承受，可能提高装载率；同时影响 STEP03 地板散装）
+          </label>
+        </div>
         <div class="divider"></div>
         <div class="group-label">卡板（Pallet）</div>
         <div class="field-row">
@@ -895,6 +900,41 @@ function bestMixedLayout(dimX, dimZ, e1, e2){
   return candidates[0];
 }
 
+// ================= carton orientation (side/upside-down) =================
+// A real box has 3 meaningfully different ways to stand it up: each of its
+// 3 edges can be the vertical one, with the other two forming the footprint.
+// bestMixedLayout already covers both 90°-footprint rotations (and mixed
+// banding) for a GIVEN footprint pair, so full orientation support just
+// means trying all 3 choices of "which edge is vertical" and keeping
+// whichever packs the most units into maxHeight. This is a uniform-
+// orientation heuristic (every unit lies the same way), not a mixed-
+// orientation optimal solver — matches the tradeoff most palletizing
+// software makes, and stays fast/simple enough to run on every keystroke.
+// When allowRotate is false, only the upright (boxH vertical) orientation is
+// tried, reproducing the pre-rotation behavior exactly.
+function bestOrientedLayout(footprintDimX, footprintDimZ, maxHeight, boxL, boxW, boxH, allowRotate){
+  const orientations = [
+    {vert: boxH, f1: boxL, f2: boxW, label: '正立（默认方向，L×W 朝下）', rotated: false}
+  ];
+  if(allowRotate){
+    orientations.push({vert: boxW, f1: boxL, f2: boxH, label: '侧放（L×H 朝下，W 朝上）', rotated: true});
+    orientations.push({vert: boxL, f1: boxW, f2: boxH, label: '侧放/倒放（W×H 朝下，L 朝上）', rotated: true});
+  }
+  let best = null;
+  orientations.forEach(o=>{
+    if(o.vert<=0) return;
+    const layers = Math.floor(maxHeight/o.vert);
+    if(layers<=0) return;
+    const layout = bestMixedLayout(footprintDimX, footprintDimZ, o.f1, o.f2);
+    if(!layout || layout.count<=0) return;
+    const total = layout.count*layers;
+    if(!best || total>best.total){
+      best = {total, layers, vert:o.vert, f1:o.f1, f2:o.f2, layout, orientLabel:o.label, rotated:o.rotated};
+    }
+  });
+  return best;
+}
+
 // ---------- Pallet ----------
 function applyPalletPreset(){
   const val = document.getElementById('pallet_preset').value;
@@ -914,6 +954,7 @@ function calcPallet(){
   const pl = num('pallet_l'), pw = num('pallet_w'), pmaxH = num('pallet_h');
   const pmaxWtRaw = document.getElementById('pallet_maxwt').value;
   const pmaxWt = pmaxWtRaw === '' ? null : parseFloat(pmaxWtRaw);
+  const allowRotate = document.getElementById('allow_rotate').checked;
 
   if(cl<=0||cw<=0||ch<=0||pl<=0||pw<=0||pmaxH<=0){
     document.getElementById('palletResultsWrap').innerHTML = '<div class="note flag">请检查外箱与卡板尺寸输入（均需大于 0）。</div>';
@@ -928,13 +969,15 @@ function calcPallet(){
     return;
   }
 
-  const layout = bestMixedLayout(pl, pw, cl, cw);
-  const perLayer = layout.count;
-  if(perLayer <= 0){
-    document.getElementById('palletResultsWrap').innerHTML = '<div class="note flag">外箱尺寸超过卡板尺寸，单层一个都放不下，请检查外箱与卡板尺寸输入。</div>';
+  const oriented = bestOrientedLayout(pl, pw, pmaxH, cl, cw, ch, allowRotate);
+  if(!oriented){
+    const hint = allowRotate ? '（已尝试侧放/倒放仍放不下）' : '（勾选下方"允许侧放/倒放"也许能放下）';
+    document.getElementById('palletResultsWrap').innerHTML = `<div class="note flag">外箱尺寸超过卡板尺寸，单层一个都放不下${hint}，请检查外箱与卡板尺寸输入。</div>`;
     return;
   }
-  let layers = Math.floor(pmaxH/ch);
+  const layout = oriented.layout;
+  const perLayer = layout.count;
+  let layers = oriented.layers;
   let totalCartons = perLayer*layers;
 
   let weightLimited = false;
@@ -946,12 +989,12 @@ function calcPallet(){
     }
   }
 
-  const footprintUtil = (perLayer*cl*cw)/(pl*pw);
+  const footprintUtil = (perLayer*oriented.f1*oriented.f2)/(pl*pw);
   const volUtil = (totalCartons*cl*cw*ch)/(pl*pw*pmaxH);
   const totalPcs = totalCartons*n;
   const totalWeight = totalCartons*cartonWt;
 
-  palletResult = {pl,pw,pmaxH, cl,cw,ch, layout, perLayer,layers,totalCartons, footprintUtil, volUtil, totalPcs, totalWeight, weightLimited, cartonWt};
+  palletResult = {pl,pw,pmaxH, cl,cw,ch, vert:oriented.vert, rotated:oriented.rotated, orientLabel:oriented.orientLabel, layout, perLayer,layers,totalCartons, footprintUtil, volUtil, totalPcs, totalWeight, weightLimited, cartonWt};
 
   renderPalletResult();
   renderSummary();
@@ -963,10 +1006,11 @@ function renderPalletResult(){
   const effectiveLayers = r.weightLimited ? Math.max(1, Math.ceil(r.totalCartons/r.perLayer)) : r.layers;
   const iso = renderIsoScene({
     outerL:r.pl, outerW:r.pw, outerH:r.pmaxH,
-    blocks:r.layout.blocks, itemH:r.ch, ny:effectiveLayers,
+    blocks:r.layout.blocks, itemH:r.vert, ny:effectiveLayers,
     targetW:440, targetH:340
   });
   const mixedNote = r.layout.blocks.length>1 ? '<div class="note flag">采用横竖混排（补边区旋转90°）以填满卡板剩余空间。</div>' : '';
+  const rotateNote = r.rotated ? `<div class="note flag">⚠ 为提高装载率，已将外箱按「${esc(r.orientLabel)}」方式摆放，请确认产品/包装印刷是否允许非直立摆放。</div>` : '';
   const readouts = [
     readoutCard('每层箱数', esc(r.perLayer), esc(r.layout.desc), 'key'),
     readoutCard('层数', esc(r.layers), `堆高 ${esc(fmt(r.pmaxH,0))}mm 限制`, ''),
@@ -986,6 +1030,7 @@ function renderPalletResult(){
       </div>
     </div>
     ${mixedNote}
+    ${rotateNote}
   `;
 }
 
@@ -1084,25 +1129,29 @@ function calcContainer(){
       document.getElementById('containerResultsWrap').innerHTML = '<div class="note flag">请输入有效的每箱数量 N（STEP 02，需大于 0）。</div>';
       return;
     }
-    const layout = bestMixedLayout(ctl, ctw, cl, cw);
-    const perLayer = layout.count;
-    if(perLayer <= 0){
-      document.getElementById('containerResultsWrap').innerHTML = '<div class="note flag">外箱尺寸超过货柜地板尺寸，一个都放不下，请检查外箱与货柜尺寸输入。</div>';
+    const allowRotate = document.getElementById('allow_rotate').checked;
+    const oriented = bestOrientedLayout(ctl, ctw, cth, cl, cw, ch, allowRotate);
+    if(!oriented){
+      const hint = allowRotate ? '（已尝试侧放/倒放仍放不下）' : '（勾选 STEP 02 的"允许侧放/倒放"也许能放下）';
+      document.getElementById('containerResultsWrap').innerHTML = `<div class="note flag">外箱尺寸超过货柜地板尺寸，一个都放不下${hint}，请检查外箱与货柜尺寸输入。</div>`;
       return;
     }
-    const nz = Math.floor(cth/ch);
+    const layout = oriented.layout;
+    const perLayer = layout.count;
+    const nz = oriented.layers;
     const totalCartons = perLayer*nz;
     const totalPcs = totalCartons*n;
     const totalWeight = totalCartons*cartonWt;
-    const footprintUtil = (perLayer*cl*cw)/(ctl*ctw);
+    const footprintUtil = (perLayer*oriented.f1*oriented.f2)/(ctl*ctw);
     const volUtil = (totalCartons*cl*cw*ch)/contVol;
 
     const iso = renderIsoScene({
       outerL:ctl, outerW:ctw, outerH:cth,
-      blocks:layout.blocks, itemH:ch, ny:nz,
+      blocks:layout.blocks, itemH:oriented.vert, ny:nz,
       targetW:520, targetH:320
     });
     const mixedNote = layout.blocks.length>1 ? '<div class="note flag">采用横竖混排（补边区旋转90°）以填满货柜地板剩余空间。</div>' : '';
+    const rotateNote = oriented.rotated ? `<div class="note flag">⚠ 为提高装载率，已将外箱按「${esc(oriented.orientLabel)}」方式摆放，请确认产品/包装印刷是否允许非直立摆放。</div>` : '';
     const readouts2 = [
       readoutCard('每层箱数', esc(perLayer), esc(layout.desc), 'key'),
       readoutCard('堆叠层数', esc(nz), `货柜内高 ${esc(fmt(cth,0))}mm 限制`, ''),
@@ -1122,6 +1171,7 @@ function calcContainer(){
         </div>
       </div>
       ${mixedNote}
+      ${rotateNote}
       <div class="note flag">⚠ 散装直堆通常无法承受满高压重，实际层数请结合纸箱抗压强度核实。</div>
     `;
     containerResult = {mode:'floor', ctl,ctw,cth, perLayer, nz, totalCartons, totalPcs, footprintUtil, volUtil, totalWeight};
