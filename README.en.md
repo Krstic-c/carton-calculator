@@ -2,7 +2,7 @@
 
 **[中文版 →](README.md)**
 
-A fully local, single-file, serverless carton/pallet/container loading calculator. Engineering-drawing style UI, three linked steps covering the full loading chain from inner carton to shipping container.
+A fully local, single-file, serverless carton/pallet/container loading calculator. Clean Apple-inspired UI, three linked steps covering the full loading chain from inner carton to shipping container.
 
 > 🔒 **Privacy**: All calculations run entirely in your browser (vanilla JS). Nothing is uploaded, no server or API calls are involved, and the tool works fully offline.
 
@@ -17,8 +17,7 @@ Reference form factor: a single HTML file that can be deployed to GitHub Pages f
 ## Tech Requirements
 
 - **Frontend only**: HTML + CSS + vanilla JavaScript, no build step, no framework dependency
-- **Zero network dependency for data**: all combination enumeration, volume-utilization calculation, and isometric-drawing rendering happen entirely in browser memory
-- **Only external dependency**: Google Fonts CDN (fonts only, no data transfer involved)
+- **Zero network dependency**: loads no external fonts/scripts/assets at all; Chinese text uses the system PingFang SC font, fully usable offline
 - **Deployment**: single file, deployable to GitHub Pages or usable fully offline by opening `index.html` locally
 - **Compatibility**: latest Chrome / Edge / Safari
 
@@ -44,28 +43,12 @@ Reference form factor: a single HTML file that can be deployed to GitHub Pages f
 
 ### Usability
 - [x] Real-time updates: changing any input instantly refreshes downstream results and diagrams, no "calculate" button needed
-- [x] Engineering-drawing style UI (Dwg No / Rev / Date / Scale title block), matching the habits of real export/factory workflows
+- [x] Clean Apple-inspired UI (rounded cards, system font, one restrained accent color), with automatic dark mode following system preference
+- [x] Pallet/container specs can be saved as reusable presets; results can be copied as text or printed/exported to PDF
 
 ## UI Layout
 
-```
-┌───────────────────────────────────────────────┐
-│  Carton Calculator    Dwg No. CC-001  Rev B     │
-├──────────────┬──────────────┬─────────────────┤
-│ STEP 01       │ STEP 02       │ STEP 03          │
-│ Carton→Box    │ Box→Pallet    │ Pallet→Container │
-│               │               │                  │
-│ L/W/H/Weight  │ Pallet preset │ Container preset  │
-│ Qty per box   │ Max height/wt │ By pallet / floor │
-│ Margin        │               │                  │
-│               │               │                  │
-│ [Candidates]  │ [Loading      │ [Loading          │
-│ [Isometric    │  result]      │  result]          │
-│  drawing]     │               │                  │
-├──────────────┴──────────────┴─────────────────┤
-│                 Summary Chain                    │
-└───────────────────────────────────────────────┘
-```
+The three STEP cards stack top to bottom (dimensions/weight → pallet spec → container spec), each with inputs on the left and result stat cards + isometric diagram on the right; a Summary Chain at the bottom strings together the key numbers across the whole flow.
 
 ## Usage
 
@@ -76,9 +59,8 @@ Reference form factor: a single HTML file that can be deployed to GitHub Pages f
 
 ## Possible Future Directions
 
-- Save/load frequently-used outer box, pallet, and container presets (via `localStorage`)
-- Export the loading plan as an image or PDF report
-- Automatic calculation for double-stacked container loading (currently done by manually multiplying by 2)
+- Carton rotation currently uses one heuristic orientation for the whole batch — a true per-carton mixed-orientation optimizer would pack tighter
+- Export the loading plan as a full image report (PDF/print currently goes through the browser's native print)
 
 ---
 

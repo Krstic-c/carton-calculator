@@ -2,6 +2,10 @@
 
 （此前的历史未记录，当前状态见 CLAUDE.md）
 
+## 2026-09-12
+
+- 整站 UI 改版为苹果风格（原黑白工业工程图风格，详见 `CLAUDE.md`「视觉设计规范」）。CSS 变量全部换成新色板/圆角/阴影，JS 只做了极小改动（等轴图描边色/箱体配色改成引用 CSS 变量、去掉一个已废弃的日期戳元素引用），所有计算逻辑、id、事件绑定未动。新增深色模式（跟随系统 `prefers-color-scheme`）。checkbox 改成真实 iOS 滑动开关样式。移除 Google Fonts 外部依赖，中文改用系统苹方，彻底零网络依赖。参考实现来自单独会话产出的 STEP02 视觉稿（Artifact「Carton Calculator, Apple Style」）。
+
 ## 2026-09-11
 
 - 重构：抽取 `readoutCard()` 统一四处重复的统计卡片模板；抽取 `twoBandSplit()` 合并 `bestMixedLayout` 里 X/Z 轴的镜像代码（用 20 万组随机输入验证行为完全一致）。所有输入 `<label>` 补上 `for` 属性；外箱/卡板尺寸放不下时改为给出明确提示，不再显示一堆 0。影响范围：STEP01/02/03 结果渲染 + 全部输入 label。

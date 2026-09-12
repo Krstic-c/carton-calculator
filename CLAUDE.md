@@ -23,13 +23,15 @@
 
 ## 视觉设计规范
 
-- **整体风格**：黑白工业工程图美学，克制、专业。不用渐变、阴影、圆角卡片这类"互联网范"装饰
-- **字体**：
-  - 标题/正文：DM Sans
-  - 数字/代码/技术细节：DM Mono
-  - 中文：Noto Sans SC
-- **强调色**：只用一个红色 `#b23a2e` 作为唯一点缀色，不引入其他彩色
-- **版式参考**：借鉴技术图纸/工程图纸的登记表、修订记录表排版逻辑（例如博客首页 "REV 编号 + title block" 的设计思路）
+2026-09-12 起改为苹果风格（之前是黑白工业工程图美学，历史版本见 git log / CHANGELOG）。
+对应 `~/.claude/skills/design-style/references/apple-minimal.md`；这个项目和 ID Studio Asia
+品牌矩阵（黑白工程图风格）不再是同一套视觉语言，是刻意的独立选择。
+
+- **整体风格**：克制极简、大留白、圆角卡片 + 柔和阴影，用间距/阴影而不是粗黑框做分隔
+- **字体**：中英文统一系统字体栈 `"PingFang SC", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif`（无外部字体加载，纯离线可用）；数字用 `font-variant-numeric: tabular-nums` 对齐，不用单独等宽字体
+- **强调色**：只用一个暖红 `#e14b39`（深色模式下 `#ff6b52`），不引入其他彩色
+- **色板/圆角/阴影**：CSS 变量集中定义在 `index.html` 的 `:root`（`--paper`/`--paper-2`/`--ink`/`--ink-dim`/`--accent`/`--radius-card`(20px)/`--radius-ctrl`(10px)/`--shadow-card`），深色模式通过 `@media (prefers-color-scheme: dark)` 覆盖同一批变量，JS 生成的等轴视图 SVG 直接引用这些变量（`var(--accent)` 等），改配色只需改 `:root`，不用碰 JS
+- **交互控件**：勾选框做成真实的 iOS 风格滑动开关（`.switch`），装载方式切换用分段控件（`.toggle-group`），不用原生 checkbox/radio 直接摆着不管样式
 - 以后新增页面/组件，先对照这份规范，不要自作主张换风格
 
 ## 已知的坑
