@@ -153,6 +153,16 @@
   .switch input:checked ~ .switch-track::after{transform:translateX(18px);}
   @media (prefers-color-scheme: dark){ .switch-track{background:#48484a;} }
 
+  /* STEP01's candidate-options list always lives alone in its own slot
+     (never alongside an already-carded sibling like diagram-box), so it can
+     safely own a permanent card background for both its placeholder-note
+     and populated-table states. palletResultsWrap/containerResultsWrap
+     can't do the same (once populated they hold their own already-carded
+     readout-grid + diagram-box, so a wrapping card here would double up) —
+     those use .note.empty-card on just the placeholder note instead. */
+  #outerOptionsWrap{background:var(--paper);border-radius:var(--radius-card);box-shadow:var(--shadow-card);padding:22px;}
+  .note.empty-card{background:var(--paper);border-radius:var(--radius-card);box-shadow:var(--shadow-card);padding:28px 24px;text-align:center;}
+
   /* readout / stat cards */
   .readout-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;}
   .readout{background:var(--paper);border-radius:16px;box-shadow:var(--shadow-card);padding:16px 18px;display:flex;flex-direction:column;gap:6px;}
@@ -349,7 +359,7 @@
         <button class="action" onclick="calcPallet()">计算卡板利用率 →</button>
       </div>
       <div class="results-col" id="palletResultsWrap">
-        <div class="note">点击左侧「计算卡板利用率」查看结果。</div>
+        <div class="note empty-card">点击左侧「计算卡板利用率」查看结果。</div>
       </div>
     </div>
   </div>
@@ -402,7 +412,7 @@
         <button class="action" onclick="calcContainer()">计算货柜利用率 →</button>
       </div>
       <div class="results-col" id="containerResultsWrap">
-        <div class="note">点击左侧「计算货柜利用率」查看结果。</div>
+        <div class="note empty-card">点击左侧「计算货柜利用率」查看结果。</div>
       </div>
     </div>
   </div>
