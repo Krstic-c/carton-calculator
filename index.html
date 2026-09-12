@@ -1353,7 +1353,12 @@ function calcContainer(){
 
 function renderSummary(){
   if(!palletResult) return;
-  document.getElementById('summaryWrap').style.display = 'block';
+  // 'flex', not 'block' — .summary's CSS is display:flex (so its gap between
+  // h3/chain/actions actually applies); an inline style set from JS always
+  // wins over the stylesheet's display:flex, so setting 'block' here was
+  // silently turning off the whole flex layout (and its gap) every time
+  // this ran, which is exactly why they looked like they had 0px between them.
+  document.getElementById('summaryWrap').style.display = 'flex';
   const n = num('ob_n');
   let chain = `
     <div class="node"><div class="n">1</div><div class="l">外箱</div></div>
