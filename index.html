@@ -72,7 +72,8 @@
   .privacy-note b{color:var(--ink);font-weight:600;}
 
   /* ---------- stage sections ---------- */
-  .stage{margin-bottom:32px;scroll-margin-top:20px;}
+  .stage{margin-bottom:40px;scroll-margin-top:20px;}
+  .stage + .stage{border-top:1px solid var(--line-soft); padding-top:40px;}
   .stage-head{margin-bottom:18px;}
   .eyebrow{font-size:11.5px;font-weight:700;letter-spacing:1.2px;color:var(--accent);text-transform:uppercase;margin-bottom:6px;}
   .stage-head h2{font-family:var(--font-display);font-size:21px;font-weight:600;letter-spacing:-0.3px;margin:0 0 5px;}
@@ -85,7 +86,15 @@
     background:var(--paper);border-radius:var(--radius-card);box-shadow:var(--shadow-card);
     padding:26px;display:flex;flex-direction:column;gap:14px;
   }
-  .results-col{display:flex;flex-direction:column;gap:16px;min-width:0;}
+  /* shared hairline border for every card-like surface: the soft shadow
+     alone doesn't read clearly when card bg (--paper) and page bg
+     (--paper-2) are this close in value — stacking two such cards with a
+     modest gap made them look fused together. A crisp 1px edge fixes that
+     regardless of gap size. */
+  .inputs-col, .readout, .diagram-box, .summary, #outerOptionsWrap, .note.empty-card{
+    border:1px solid var(--line-soft);
+  }
+  .results-col{display:flex;flex-direction:column;gap:22px;min-width:0;}
 
   .field-row{display:flex;gap:10px;}
   .field{flex:1;display:flex;flex-direction:column;gap:6px;min-width:0;margin-bottom:2px;}
