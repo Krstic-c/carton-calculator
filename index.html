@@ -873,7 +873,17 @@ function renderIsoScene(opts){
         }
       });
     }
-    list.sort((A,B)=> (A[1]+A[2]+A[3]) - (B[1]+B[2]+B[3]));
+    // Painter's algorithm: draw back-to-front so nearer boxes correctly
+    // paint over farther ones. Depth must be the item's REAL position
+    // (block.x0/z0 offset + its own itemDimX/itemDimZ), not just the local
+    // i+j+k index — those only agree when every block shares the same
+    // item size and starts at the origin. With mixed-orientation layouts
+    // (a rotated "main + supplement" block pair, itemDimX/itemDimZ differ
+    // between them and the supplement block is offset by x0/z0), sorting
+    // by local index alone drew some far-back supplement boxes on top of
+    // much-nearer main-block boxes, which looked like a box had been sliced.
+    const depthOf = ([block,i,j,k])=> (block.x0 + i*block.itemDimX) + (block.z0 + j*block.itemDimZ) + k*itemH;
+    list.sort((A,B)=> depthOf(A) - depthOf(B));
     const shades = [
       {top:'#f0f0ee', side:'#bcbcb8', edge:'#d6d6d3'},
       {top:'#e3ded9', side:'#a8a099', edge:'#c2bab2'}
