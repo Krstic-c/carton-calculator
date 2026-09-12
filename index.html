@@ -255,10 +255,15 @@
     font-size:11px;font-weight:700;margin:0;color:var(--ink-faint);
     letter-spacing:0.8px;text-transform:uppercase;
   }
+  /* .summary spans the full page width (it's not inside a STEP's narrower
+     results-col), but the chain's actual content is compact — without
+     flex-grow the nodes just cluster on the left, leaving a large dead
+     void on the right of the card. flex:1 (capped by max-width so nodes
+     don't balloon on very wide screens) lets them share the full row. */
   .chain{display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap;}
   .chain .node{
     background:var(--surface-2);border:1px solid var(--line-soft);border-radius:14px;
-    padding:var(--space-3) var(--space-4);min-width:110px;text-align:center;
+    padding:var(--space-3) var(--space-4);flex:1;min-width:110px;max-width:220px;text-align:center;
   }
   .chain .node .n{font-size:20px;color:var(--accent);font-weight:600;font-variant-numeric:tabular-nums;}
   .chain .node .l{font-size:11px;color:var(--ink-dim);margin-top:2px;}
@@ -935,10 +940,40 @@ function renderIsoScene(opts){
       gridLines += `<polygon points="${polyStr(outline)}" fill="none" stroke="var(--line-soft)" stroke-width="1"/>`;
       for(let k=1;k<ny;k++){ const p1=P(x0,k*itemH,z0), p2=P(x1,k*itemH,z0); gridLines += `<line x1="${p1[0]}" y1="${p1[1]}" x2="${p2[0]}" y2="${p2[1]}" stroke="var(--line-soft)" stroke-width="0.4" opacity="0.6"/>`; }
     });
-    itemsSvg = gridLines + `<text x="${targetW/2}" y="${targetH-8}" font-family="var(--font-mono)" font-size="9.5" fill="var(--ink-dim)" text-anchor="middle">共 ${total} 格，数量过多，仅显示网格划分</text>`;
+    // centered under the wireframe itself (not the fixed canvas) — matters
+    // once the canvas below is cropped to content, since targetW/2 would no
+    // longer be where the drawing actually sits.
+    const wfMinX = Math.min(c.a[0],c.b[0],c.c[0],c.d[0],c.e[0],c.f[0],c.g[0],c.h[0]);
+    const wfMaxX = Math.max(c.a[0],c.b[0],c.c[0],c.d[0],c.e[0],c.f[0],c.g[0],c.h[0]);
+    const wfMaxY = Math.max(c.a[1],c.b[1],c.c[1],c.d[1],c.e[1],c.f[1],c.g[1],c.h[1]);
+    itemsSvg = gridLines + `<text x="${((wfMinX+wfMaxX)/2).toFixed(1)}" y="${(wfMaxY+24).toFixed(1)}" font-family="var(--font-mono)" font-size="9.5" fill="var(--ink-dim)" text-anchor="middle">共 ${total} 格，数量过多，仅显示网格划分</text>`;
   }
 
-  return `<svg class="iso-svg" width="${targetW}" height="${targetH}" viewBox="0 0 ${targetW} ${targetH}">${wireLines}${itemsSvg}${dimLabels}</svg>`;
+  // Crop the canvas to the ACTUAL drawn content instead of always emitting a
+  // fixed targetW×targetH box: a very elongated shape (say a 12m container)
+  // only fills a fraction of a canvas sized for a roughly cubic shape, which
+  // left big blank margins above/below inside the card. Reading the real
+  // coordinates back out of the SVG we just built (rather than re-deriving
+  // bounds analytically for every element type) keeps this correct for
+  // anything drawn above — wireframe, items, dimension leaders/pills, the
+  // grid-fallback text — without hand-tracking each one's extent separately.
+  const combined = wireLines + itemsSvg + dimLabels;
+  let bMinX=Infinity,bMaxX=-Infinity,bMinY=Infinity,bMaxY=-Infinity;
+  const grow=(x,y)=>{ if(x<bMinX)bMinX=x; if(x>bMaxX)bMaxX=x; if(y<bMinY)bMinY=y; if(y>bMaxY)bMaxY=y; };
+  let mm;
+  const lineRe=/<line x1="(-?[\d.]+)" y1="(-?[\d.]+)" x2="(-?[\d.]+)" y2="(-?[\d.]+)"/g;
+  while((mm=lineRe.exec(combined))){ grow(+mm[1],+mm[2]); grow(+mm[3],+mm[4]); }
+  const rectRe=/<rect x="(-?[\d.]+)" y="(-?[\d.]+)" width="([\d.]+)" height="([\d.]+)"/g;
+  while((mm=rectRe.exec(combined))){ const x=+mm[1],y=+mm[2],w=+mm[3],h=+mm[4]; grow(x,y); grow(x+w,y+h); }
+  const polyRe=/<polygon points="([^"]+)"/g;
+  while((mm=polyRe.exec(combined))){ mm[1].trim().split(' ').forEach(p=>{ const [px,py]=p.split(',').map(Number); grow(px,py); }); }
+  const textRe=/<text x="(-?[\d.]+)" y="(-?[\d.]+)"/g;
+  while((mm=textRe.exec(combined))){ grow(+mm[1],+mm[2]); }
+  if(!isFinite(bMinX)){ bMinX=0; bMaxX=targetW; bMinY=0; bMaxY=targetH; } // nothing drawn (degenerate) — fall back to full canvas
+  const M = 16;
+  const vbX=(bMinX-M), vbY=(bMinY-M), vbW=(bMaxX-bMinX+M*2), vbH=(bMaxY-bMinY+M*2);
+
+  return `<svg class="iso-svg" width="${vbW.toFixed(1)}" height="${vbH.toFixed(1)}" viewBox="${vbX.toFixed(1)} ${vbY.toFixed(1)} ${vbW.toFixed(1)} ${vbH.toFixed(1)}">${combined}</svg>`;
 }
 
 // ================= mixed-orientation footprint packing =================
