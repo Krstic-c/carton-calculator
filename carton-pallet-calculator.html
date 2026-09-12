@@ -246,9 +246,13 @@
   .summary{
     background:var(--paper);border-radius:var(--radius-card);box-shadow:var(--shadow-card);
     padding:var(--space-6);margin-top:var(--space-2);
+    display:flex;flex-direction:column;gap:var(--space-5);
   }
+  /* gap on the flex column above handles spacing between h3/chain/actions
+     uniformly — no per-child margin to forget (that's exactly how the chain
+     row and the buttons below it ended up touching with 0px between them). */
   .summary h3{
-    font-size:11px;font-weight:700;margin:0 0 var(--space-4);color:var(--ink-faint);
+    font-size:11px;font-weight:700;margin:0;color:var(--ink-faint);
     letter-spacing:0.8px;text-transform:uppercase;
   }
   .chain{display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap;}
@@ -271,7 +275,7 @@
   }
   button.mini-btn:hover{color:var(--ink); background:var(--line-soft);}
   .field-row > button.mini-btn{flex:1;}
-  .summary-actions{display:flex;gap:var(--space-2);margin-bottom:var(--space-4);flex-wrap:wrap;}
+  .summary-actions{display:flex;gap:var(--space-2);flex-wrap:wrap;}
 
   @media print{
     body{padding:0;background:#fff;}
@@ -722,7 +726,7 @@ function drawOuterDiagram(opt){
     <div class="readout-grid">${readouts}</div>
     <div class="diagram-box">
       <div class="view">
-        <div class="view-label">等轴视图 Isometric View</div>
+        <div class="view-label">等轴视图 Isometric View（单位 mm）</div>
         ${iso}
         <div class="iso-caption">每个小方块 = 1 个彩盒（${esc(opt.e0)}×${esc(opt.e1)}×${esc(opt.e2)}mm）${emptyNote}</div>
       </div>
@@ -1137,7 +1141,7 @@ function renderPalletResult(){
     <div class="readout-grid">${readouts}</div>
     <div class="diagram-box">
       <div class="view">
-        <div class="view-label">等轴视图 Isometric View</div>
+        <div class="view-label">等轴视图 Isometric View（单位 mm）</div>
         ${iso}
         <div class="iso-caption">每个小方块 = 1 个外箱（${esc(fmt(r.cl,0))}×${esc(fmt(r.cw,0))}×${esc(fmt(r.ch,0))}mm，深色补边区已旋转90°）</div>
       </div>
@@ -1222,7 +1226,7 @@ function calcContainer(){
       <div class="readout-grid">${readouts1}</div>
       <div class="diagram-box">
         <div class="view">
-          <div class="view-label">等轴视图 Isometric View（每格 = 1 托）</div>
+          <div class="view-label">等轴视图 Isometric View（单位 mm，每格 = 1 托）</div>
           ${iso}
         </div>
       </div>
@@ -1280,7 +1284,7 @@ function calcContainer(){
       <div class="readout-grid">${readouts2}</div>
       <div class="diagram-box">
         <div class="view">
-          <div class="view-label">等轴视图 Isometric View（每格 = 1 外箱）</div>
+          <div class="view-label">等轴视图 Isometric View（单位 mm，每格 = 1 外箱）</div>
           ${iso}
         </div>
       </div>
@@ -1310,6 +1314,21 @@ function renderSummary(){
 }
 
 // ---------- copy-to-clipboard summary (plain text, safe for email/IM) ----------
+// Matches the 4 standard container presets above so the summary can name the
+// type ("40HQ") instead of listing raw dimensions — container sizes are a
+// small standardized set, unlike pallet/carton dims which are genuinely
+// custom per shipment and need the numbers spelled out.
+const CONTAINER_TYPES = [
+  {name:'20GP', l:5898, w:2352, h:2393},
+  {name:'40GP', l:12032, w:2352, h:2393},
+  {name:'40HQ', l:12032, w:2352, h:2698},
+  {name:'45HQ', l:13556, w:2352, h:2698}
+];
+function containerTypeName(l, w, h){
+  const found = CONTAINER_TYPES.find(t => t.l===l && t.w===w && t.h===h);
+  return found ? found.name : null;
+}
+
 // Builds the summary in one language ('zh' or 'en'); buildSummaryText()
 // below stacks a full zh paragraph on top of a full en paragraph, rather
 // than mixing both languages inline per line, so either half can be
@@ -1334,15 +1353,19 @@ function buildSummaryLines(lang){
   }
   if(containerResult){
     const c = containerResult;
+    const typeName = containerTypeName(c.ctl, c.ctw, c.cth);
+    const containerLabel = typeName
+      ? (zh ? `${typeName} 货柜` : `${typeName} container`)
+      : (zh ? `自定义货柜（${c.ctl}×${c.ctw}×${c.cth} mm）` : `custom container (${c.ctl}×${c.ctw}×${c.cth} mm)`);
     if(c.mode === 'pallet'){
       const stackTxt = c.stackLayers>1 ? (zh ? `，堆 ${c.stackLayers} 层` : `, stacked ${c.stackLayers} layers`) : '';
       lines.push(zh
-        ? `货柜：${c.ctl}×${c.ctw}×${c.cth} mm，按卡板装载 ${c.palletsPerContainer} 托${stackTxt}=${c.cartonsTotal} 箱（${c.pcsTotal} pcs），体积利用率 ${pct(c.volUtil)}`
-        : `Container: ${c.ctl}×${c.ctw}×${c.cth} mm, by pallet, ${c.palletsPerContainer} pallets${stackTxt}=${c.cartonsTotal} cartons (${c.pcsTotal} pcs), volume utilization ${pct(c.volUtil)}`);
+        ? `${containerLabel}：按卡板装载 ${c.palletsPerContainer} 托${stackTxt}=${c.cartonsTotal} 箱（${c.pcsTotal} pcs），体积利用率 ${pct(c.volUtil)}`
+        : `${containerLabel}: by pallet, ${c.palletsPerContainer} pallets${stackTxt}=${c.cartonsTotal} cartons (${c.pcsTotal} pcs), volume utilization ${pct(c.volUtil)}`);
     } else {
       lines.push(zh
-        ? `货柜：${c.ctl}×${c.ctw}×${c.cth} mm，地板散装 ${c.perLayer} 箱/层×${c.nz} 层=${c.totalCartons} 箱（${c.totalPcs} pcs），体积利用率 ${pct(c.volUtil)}`
-        : `Container: ${c.ctl}×${c.ctw}×${c.cth} mm, floor loading, ${c.perLayer} cartons/layer×${c.nz} layers=${c.totalCartons} cartons (${c.totalPcs} pcs), volume utilization ${pct(c.volUtil)}`);
+        ? `${containerLabel}：地板散装 ${c.perLayer} 箱/层×${c.nz} 层=${c.totalCartons} 箱（${c.totalPcs} pcs），体积利用率 ${pct(c.volUtil)}`
+        : `${containerLabel}: floor loading, ${c.perLayer} cartons/layer×${c.nz} layers=${c.totalCartons} cartons (${c.totalPcs} pcs), volume utilization ${pct(c.volUtil)}`);
     }
   }
   lines.push(zh ? '—— 以上为近似计算结果，仅供参考 ——' : '—— Approximate results, for reference only ——');
