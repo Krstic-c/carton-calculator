@@ -1310,28 +1310,47 @@ function renderSummary(){
 }
 
 // ---------- copy-to-clipboard summary (plain text, safe for email/IM) ----------
-function buildSummaryText(){
-  const lines = ['装箱方案汇总 Summary'];
+// Builds the summary in one language ('zh' or 'en'); buildSummaryText()
+// below stacks a full zh paragraph on top of a full en paragraph, rather
+// than mixing both languages inline per line, so either half can be
+// copy-pasted alone into a Chinese- or English-only email/quote.
+function buildSummaryLines(lang){
+  const zh = lang === 'zh';
+  const lines = [zh ? '装箱方案汇总' : 'Loading Plan Summary'];
   if(selectedOuterOption){
     const o = selectedOuterOption;
-    lines.push(`彩盒 Inner Box：${num('ib_l')}×${num('ib_w')}×${num('ib_h')} mm，${num('ib_wt')} kg/个`);
-    lines.push(`外箱 Outer Carton：${fmt(o.dimX,0)}×${fmt(o.dimY,0)}×${fmt(o.dimZ,0)} mm，${o.N} 个/箱（排列 ${o.a}×${o.b}×${o.c}，体积利用率 ${pct(o.util)}）`);
+    lines.push(zh
+      ? `彩盒：${num('ib_l')}×${num('ib_w')}×${num('ib_h')} mm，${num('ib_wt')} kg/个`
+      : `Inner box: ${num('ib_l')}×${num('ib_w')}×${num('ib_h')} mm, ${num('ib_wt')} kg/pc`);
+    lines.push(zh
+      ? `外箱：${fmt(o.dimX,0)}×${fmt(o.dimY,0)}×${fmt(o.dimZ,0)} mm，${o.N} 个/箱（排列 ${o.a}×${o.b}×${o.c}，体积利用率 ${pct(o.util)}）`
+      : `Outer carton: ${fmt(o.dimX,0)}×${fmt(o.dimY,0)}×${fmt(o.dimZ,0)} mm, ${o.N} pcs/carton (layout ${o.a}×${o.b}×${o.c}, volume utilization ${pct(o.util)})`);
   }
   if(palletResult){
     const r = palletResult;
-    lines.push(`卡板 Pallet：${r.pl}×${r.pw} mm，每托 ${r.perLayer}×${r.layers}=${r.totalCartons} 箱（${r.totalPcs} pcs），毛重 ${fmt(r.totalWeight,1)} kg，体积利用率 ${pct(r.volUtil)}`);
+    lines.push(zh
+      ? `卡板：${r.pl}×${r.pw} mm，每托 ${r.perLayer}×${r.layers}=${r.totalCartons} 箱（${r.totalPcs} pcs），毛重 ${fmt(r.totalWeight,1)} kg，体积利用率 ${pct(r.volUtil)}`
+      : `Pallet: ${r.pl}×${r.pw} mm, ${r.perLayer}×${r.layers}=${r.totalCartons} cartons/pallet (${r.totalPcs} pcs), gross weight ${fmt(r.totalWeight,1)} kg, volume utilization ${pct(r.volUtil)}`);
   }
   if(containerResult){
     const c = containerResult;
     if(c.mode === 'pallet'){
-      const stackTxt = c.stackLayers>1 ? `，堆 ${c.stackLayers} 层` : '';
-      lines.push(`货柜 Container：${c.ctl}×${c.ctw}×${c.cth} mm，按卡板装载 ${c.palletsPerContainer} 托${stackTxt}=${c.cartonsTotal} 箱（${c.pcsTotal} pcs），体积利用率 ${pct(c.volUtil)}`);
+      const stackTxt = c.stackLayers>1 ? (zh ? `，堆 ${c.stackLayers} 层` : `, stacked ${c.stackLayers} layers`) : '';
+      lines.push(zh
+        ? `货柜：${c.ctl}×${c.ctw}×${c.cth} mm，按卡板装载 ${c.palletsPerContainer} 托${stackTxt}=${c.cartonsTotal} 箱（${c.pcsTotal} pcs），体积利用率 ${pct(c.volUtil)}`
+        : `Container: ${c.ctl}×${c.ctw}×${c.cth} mm, by pallet, ${c.palletsPerContainer} pallets${stackTxt}=${c.cartonsTotal} cartons (${c.pcsTotal} pcs), volume utilization ${pct(c.volUtil)}`);
     } else {
-      lines.push(`货柜 Container：${c.ctl}×${c.ctw}×${c.cth} mm，地板散装 ${c.perLayer} 箱/层×${c.nz} 层=${c.totalCartons} 箱（${c.totalPcs} pcs），体积利用率 ${pct(c.volUtil)}`);
+      lines.push(zh
+        ? `货柜：${c.ctl}×${c.ctw}×${c.cth} mm，地板散装 ${c.perLayer} 箱/层×${c.nz} 层=${c.totalCartons} 箱（${c.totalPcs} pcs），体积利用率 ${pct(c.volUtil)}`
+        : `Container: ${c.ctl}×${c.ctw}×${c.cth} mm, floor loading, ${c.perLayer} cartons/layer×${c.nz} layers=${c.totalCartons} cartons (${c.totalPcs} pcs), volume utilization ${pct(c.volUtil)}`);
     }
   }
-  lines.push('—— 以上为近似计算结果，仅供参考 ——');
-  return lines.join('\n');
+  lines.push(zh ? '—— 以上为近似计算结果，仅供参考 ——' : '—— Approximate results, for reference only ——');
+  return lines;
+}
+
+function buildSummaryText(){
+  return buildSummaryLines('zh').join('\n') + '\n\n' + buildSummaryLines('en').join('\n');
 }
 
 function fallbackCopyText(text, done){
