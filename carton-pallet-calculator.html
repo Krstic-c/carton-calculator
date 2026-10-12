@@ -355,9 +355,10 @@
         <div class="group-label">推荐目标</div>
         <div class="field-row">
           <div class="field"><label for="target_n">每箱数量 N (个)</label><input type="number" id="target_n" placeholder="24"></div>
-          <div class="field"><label for="margin_mm">放尺 / 整体余量 (mm)</label><input type="number" id="margin_mm" placeholder="4"></div>
+          <div class="field"><label for="margin_mm">放尺 / 整体余量 (mm)</label><input type="number" id="margin_mm" placeholder="8"></div>
         </div>
         <div class="note">程序会搜索所有 <b>a×b×c ≥ N</b> 的排列组合（含无法整除、需留空位的情况），并尝试彩盒的全部 6 种摆放方向，找出外箱体积最小（利用率最高）的组合，而不再要求 N 必须被整除。</div>
+        <div class="note">「放尺/整体余量」每个维度只加一次，已包含两侧纸板厚度（常见单坑瓦楞纸板约 3-4mm，两侧合计 6-8mm）+ 装箱间隙，默认 8mm 为通用估算值；实际请按纸板材质和装箱松紧调整。</div>
         <button class="action" onclick="calcOuterOptions()">计算推荐外箱 →</button>
       </div>
       <div class="results-col">
@@ -741,13 +742,19 @@ function drawOuterDiagram(opt){
     targetW:420, targetH:340
   });
   const emptyNote = opt.capacity>opt.N ? `，其中 <b>${esc(opt.capacity-opt.N)}</b> 格留空（实际彩盒不足以填满整层/整列）` : '';
+  // innerL/W/H = 彩盒净尺寸堆叠总和（a*e0 等），不含任何余量——这是外箱内腔至少要留出的空间。
+  // marginUsed 反推自 dimX - innerL，等于用户填的"放尺/整体余量"（每个维度只加一次，参见 calcOuterOptions）。
+  const innerL = opt.a*opt.e0, innerW = opt.b*opt.e1, innerH = opt.c*opt.e2;
+  const marginUsed = opt.dimX - innerL;
   const readouts = [
-    readoutCard('外箱尺寸', `${esc(fmt(opt.dimX,0))}×${esc(fmt(opt.dimY,0))}×${esc(fmt(opt.dimZ,0))}`, 'mm (L×W×H)', 'key'),
+    readoutCard('预计外尺寸', `${esc(fmt(opt.dimX,0))}×${esc(fmt(opt.dimY,0))}×${esc(fmt(opt.dimZ,0))}`, 'mm (L×W×H) · 已含放尺', 'key'),
+    readoutCard('内尺寸（彩盒净尺寸）', `${esc(fmt(innerL,0))}×${esc(fmt(innerW,0))}×${esc(fmt(innerH,0))}`, 'mm · 不含放尺/纸板厚度', ''),
     readoutCard('排列', `${esc(opt.a)}×${esc(opt.b)}×${esc(opt.c)}`, `格位 ${esc(opt.capacity)} 个，装 ${esc(opt.N)} 个彩盒`, ''),
     readoutCard('体积利用率', esc(pct(opt.util)), '彩盒体积 / 外箱体积', 'key')
   ].join('');
   wrap.innerHTML = `
     <div class="readout-grid">${readouts}</div>
+    <div class="note">「预计外尺寸」= 内尺寸 + 放尺/整体余量 <b>${esc(fmt(marginUsed,1))}mm</b>（已包含两侧纸板厚度估算 + 装箱间隙，可在左侧「放尺/整体余量」输入框调整）。内尺寸是彩盒净尺寸堆叠后的理论最小值，外尺寸是软件按当前余量推算的参考值，<b>均非精确出图尺寸</b>——下单前请把彩盒净尺寸和用纸克数告知纸箱供应商，由供应商确认实际内径、外径与纸板厚度。</div>
     <div class="diagram-box">
       <div class="view">
         <div class="view-label">等轴视图 Isometric View（单位 mm）</div>
