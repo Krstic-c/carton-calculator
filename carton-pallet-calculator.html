@@ -176,6 +176,12 @@
     border-radius:8px;cursor:pointer;transition:background .15s,color .15s;
   }
   .toggle-group button.active{background:var(--ink);color:var(--paper);font-weight:600;}
+  /* #langToggle's two labels are intentionally different widths ("中文" vs "EN"), unlike
+     every other toggle-group in this file (装载方式 etc.) where an equal flex:1 split reads
+     fine. With flex:1 here, the active button going bold (font-weight 600) nudges the flex
+     distribution and can wrap the OTHER button's label onto two lines at some widths —
+     sizing each button to its own content avoids that entirely. */
+  #langToggle button{flex:none;white-space:nowrap;}
 
   /* iOS-style switch (checkbox stays real/functional, just visually replaced) */
   .switch-row{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-4);padding-top:var(--space-3);border-top:1px solid var(--line-soft);margin-top:6px;cursor:pointer;}
@@ -308,7 +314,7 @@
 
   @media print{
     body{padding:0;background:#fff;}
-    .inputs-col, .no-print, footer, .steps-nav{display:none !important;}
+    .inputs-col, .no-print, footer, .steps-nav, #langToggle{display:none !important;}
     .stage-body{grid-template-columns:1fr !important;}
     .card, .inputs-col, .readout, .diagram-box, .summary{box-shadow:none !important;border:1px solid #ddd;}
     .stage{break-inside:avoid; margin-bottom:var(--space-4);}
@@ -331,44 +337,48 @@
       <div class="sub">Carton · Pallet · Container Loading</div>
     </div>
     <nav class="steps-nav">
-      <a href="#stage01">01 推荐外箱</a>
-      <a href="#stage02">02 卡板装载</a>
-      <a href="#stage03">03 货柜装载</a>
+      <a href="#stage01" data-i18n="navStep1">01 推荐外箱</a>
+      <a href="#stage02" data-i18n="navStep2">02 卡板装载</a>
+      <a href="#stage03" data-i18n="navStep3">03 货柜装载</a>
     </nav>
+    <div class="toggle-group" id="langToggle" role="group" aria-label="Language / 语言">
+      <button type="button" id="langZh" class="active" aria-pressed="true" onclick="setLang('zh')">中文</button>
+      <button type="button" id="langEn" aria-pressed="false" onclick="setLang('en')">EN</button>
+    </div>
   </header>
-  <div class="privacy-note"><span class="dot"></span>全部计算在本地浏览器完成 · <b>不上传任何数据</b> · 图示比例仅供参考，非精确出图尺寸</div>
+  <div class="privacy-note"><span class="dot"></span><span data-i18n-html="privacyNote">全部计算在本地浏览器完成 · <b>不上传任何数据</b> · 图示比例仅供参考，非精确出图尺寸</span></div>
 
   <!-- STAGE 1 -->
   <div class="stage" data-step="01" id="stage01">
     <div class="stage-head">
       <div class="eyebrow">Step 01</div>
-      <h2>彩盒尺寸 → 推荐外箱</h2>
-      <p class="hint">输入彩盒尺寸与每箱数量，自动搜索排列组合，推荐利用率最高的外箱规格。</p>
+      <h2 data-i18n="step1Title">彩盒尺寸 → 推荐外箱</h2>
+      <p class="hint" data-i18n="step1Hint">输入彩盒尺寸与每箱数量，自动搜索排列组合，推荐利用率最高的外箱规格。</p>
     </div>
     <div class="stage-body">
       <div class="inputs-col">
-        <div class="group-label first">彩盒（Inner Box）</div>
+        <div class="group-label first" data-i18n="groupInnerBox">彩盒（Inner Box）</div>
         <div class="field-row">
-          <div class="field"><label for="ib_l">长 L (mm)</label><input type="number" id="ib_l" placeholder="200"></div>
-          <div class="field"><label for="ib_w">宽 W (mm)</label><input type="number" id="ib_w" placeholder="120"></div>
-          <div class="field"><label for="ib_h">高 H (mm)</label><input type="number" id="ib_h" placeholder="80"></div>
+          <div class="field"><label for="ib_l" data-i18n="labelL">长 L (mm)</label><input type="number" id="ib_l" placeholder="200"></div>
+          <div class="field"><label for="ib_w" data-i18n="labelW">宽 W (mm)</label><input type="number" id="ib_w" placeholder="120"></div>
+          <div class="field"><label for="ib_h" data-i18n="labelH">高 H (mm)</label><input type="number" id="ib_h" placeholder="80"></div>
         </div>
         <div class="field-row">
-          <div class="field"><label for="ib_wt">单个重量 (kg)</label><input type="number" id="ib_wt" placeholder="0.5" step="0.01"></div>
+          <div class="field"><label for="ib_wt" data-i18n="labelUnitWeight">单个重量 (kg)</label><input type="number" id="ib_wt" placeholder="0.5" step="0.01"></div>
         </div>
         <div class="divider"></div>
-        <div class="group-label">推荐目标</div>
+        <div class="group-label" data-i18n="groupTarget">推荐目标</div>
         <div class="field-row">
-          <div class="field"><label for="target_n">每箱数量 N (个)</label><input type="number" id="target_n" placeholder="24"></div>
-          <div class="field"><label for="margin_mm">放尺 / 整体余量 (mm)</label><input type="number" id="margin_mm" placeholder="8"></div>
+          <div class="field"><label for="target_n" data-i18n="labelTargetN">每箱数量 N (个)</label><input type="number" id="target_n" placeholder="24"></div>
+          <div class="field"><label for="margin_mm" data-i18n="labelMargin">放尺 / 整体余量 (mm)</label><input type="number" id="margin_mm" placeholder="8"></div>
         </div>
-        <div class="note">程序会搜索所有 <b>a×b×c ≥ N</b> 的排列组合（含无法整除、需留空位的情况），并尝试彩盒的全部 6 种摆放方向，找出外箱体积最小（利用率最高）的组合，而不再要求 N 必须被整除。</div>
-        <div class="note">「放尺/整体余量」每个维度只加一次，已包含两侧纸板厚度（常见单坑瓦楞纸板约 3-4mm，两侧合计 6-8mm）+ 装箱间隙，默认 8mm 为通用估算值；实际请按纸板材质和装箱松紧调整。</div>
-        <button class="action" onclick="calcOuterOptions()">计算推荐外箱 →</button>
+        <div class="note" data-i18n-html="note1Step1">程序会搜索所有 <b>a×b×c ≥ N</b> 的排列组合（含无法整除、需留空位的情况），并尝试彩盒的全部 6 种摆放方向，找出外箱体积最小（利用率最高）的组合，而不再要求 N 必须被整除。</div>
+        <div class="note" data-i18n-html="note2Step1">「放尺/整体余量」每个维度只加一次，已包含两侧纸板厚度（常见单坑瓦楞纸板约 3-4mm，两侧合计 6-8mm）+ 装箱间隙，默认 8mm 为通用估算值；实际请按纸板材质和装箱松紧调整。</div>
+        <button class="action" data-i18n="btnCalcOuter" onclick="calcOuterOptions()">计算推荐外箱 →</button>
       </div>
       <div class="results-col">
         <div id="outerOptionsWrap">
-          <div class="note">点击左侧「计算推荐外箱」查看排列方案。</div>
+          <div class="note" data-i18n="step1EmptyNote">点击左侧「计算推荐外箱」查看排列方案。</div>
         </div>
         <div class="results-col" id="outerDiagramWrap"></div>
       </div>
@@ -379,58 +389,58 @@
   <div class="stage" data-step="02" id="stage02">
     <div class="stage-head">
       <div class="eyebrow">Step 02</div>
-      <h2>外箱 → 卡板装载</h2>
-      <p class="hint">输入外箱尺寸与卡板规格，计算每层排列方式与整板装载利用率。</p>
+      <h2 data-i18n="step2Title">外箱 → 卡板装载</h2>
+      <p class="hint" data-i18n="step2Hint">输入外箱尺寸与卡板规格，计算每层排列方式与整板装载利用率。</p>
     </div>
     <div class="stage-body">
       <div class="inputs-col">
-        <div class="group-label first">外箱（Outer Carton，可手动修改）</div>
+        <div class="group-label first" data-i18n="groupOuterCarton">外箱（Outer Carton，可手动修改）</div>
         <div class="field-row">
-          <div class="field"><label for="ob_l">长 L (mm)</label><input type="number" id="ob_l" placeholder="410"></div>
-          <div class="field"><label for="ob_w">宽 W (mm)</label><input type="number" id="ob_w" placeholder="368"></div>
-          <div class="field"><label for="ob_h">高 H (mm)</label><input type="number" id="ob_h" placeholder="168"></div>
+          <div class="field"><label for="ob_l" data-i18n="labelL">长 L (mm)</label><input type="number" id="ob_l" placeholder="410"></div>
+          <div class="field"><label for="ob_w" data-i18n="labelW">宽 W (mm)</label><input type="number" id="ob_w" placeholder="368"></div>
+          <div class="field"><label for="ob_h" data-i18n="labelH">高 H (mm)</label><input type="number" id="ob_h" placeholder="168"></div>
         </div>
         <div class="field-row">
-          <div class="field"><label for="ob_n">每箱数量 N (个)</label><input type="number" id="ob_n" placeholder="24"></div>
-          <div class="field"><label for="ob_selfwt">外箱自重 (kg)</label><input type="number" id="ob_selfwt" placeholder="0.4" step="0.01"></div>
+          <div class="field"><label for="ob_n" data-i18n="labelTargetN">每箱数量 N (个)</label><input type="number" id="ob_n" placeholder="24"></div>
+          <div class="field"><label for="ob_selfwt" data-i18n="labelSelfWt">外箱自重 (kg)</label><input type="number" id="ob_selfwt" placeholder="0.4" step="0.01"></div>
         </div>
         <label class="switch-row">
           <div class="label-block">
-            <div class="t">允许外箱侧放 / 倒放</div>
-            <div class="d">若产品和包装能承受，可能提高装载率；同时影响 STEP03 地板散装</div>
+            <div class="t" data-i18n="switchRotateTitle">允许外箱侧放 / 倒放</div>
+            <div class="d" data-i18n="switchRotateDesc">若产品和包装能承受，可能提高装载率；同时影响 STEP03 地板散装</div>
           </div>
           <span class="switch"><input type="checkbox" id="allow_rotate" onchange="calcPallet()"><span class="switch-track"></span></span>
         </label>
         <div class="divider"></div>
-        <div class="group-label">卡板（Pallet）</div>
+        <div class="group-label" data-i18n="groupPallet">卡板（Pallet）</div>
         <div class="field-row">
           <div class="field" style="flex:1.4">
-            <label for="pallet_preset">规格</label>
+            <label for="pallet_preset" data-i18n="labelSpec">规格</label>
             <select id="pallet_preset" onchange="applyPalletPreset()">
-              <option value="1200,1000">1200 × 1000 亚洲标准</option>
-              <option value="1100,1100">1100 × 1100 日标</option>
-              <option value="1067,1067">1067 × 1067 美标 CP1</option>
-              <option value="1200,800">1200 × 800 欧标 EUR</option>
-              <option value="custom">自定义</option>
+              <option value="1200,1000" data-i18n="palletOpt1">1200 × 1000 亚洲标准</option>
+              <option value="1100,1100" data-i18n="palletOpt2">1100 × 1100 日标</option>
+              <option value="1067,1067" data-i18n="palletOpt3">1067 × 1067 美标 CP1</option>
+              <option value="1200,800" data-i18n="palletOpt4">1200 × 800 欧标 EUR</option>
+              <option value="custom" data-i18n="optCustom">自定义</option>
             </select>
           </div>
         </div>
         <div class="field-row">
-          <button type="button" class="mini-btn" onclick="palletPresetMgr.saveCurrent()">＋ 存为常用预设</button>
-          <button type="button" class="mini-btn" onclick="palletPresetMgr.deleteCurrent()">删除当前预设</button>
+          <button type="button" class="mini-btn" data-i18n="btnSavePreset" onclick="palletPresetMgr.saveCurrent()">＋ 存为常用预设</button>
+          <button type="button" class="mini-btn" data-i18n="btnDeletePreset" onclick="palletPresetMgr.deleteCurrent()">删除当前预设</button>
         </div>
         <div class="field-row">
-          <div class="field"><label for="pallet_l">卡板长 (mm)</label><input type="number" id="pallet_l" placeholder="1200"></div>
-          <div class="field"><label for="pallet_w">卡板宽 (mm)</label><input type="number" id="pallet_w" placeholder="1000"></div>
+          <div class="field"><label for="pallet_l" data-i18n="labelPalletL">卡板长 (mm)</label><input type="number" id="pallet_l" placeholder="1200"></div>
+          <div class="field"><label for="pallet_w" data-i18n="labelPalletW">卡板宽 (mm)</label><input type="number" id="pallet_w" placeholder="1000"></div>
         </div>
         <div class="field-row">
-          <div class="field"><label for="pallet_h">最大堆高 (mm，不含卡板)</label><input type="number" id="pallet_h" placeholder="1500"></div>
-          <div class="field"><label for="pallet_maxwt">最大载重 (kg，留空不限)</label><input type="number" id="pallet_maxwt" placeholder="不限"></div>
+          <div class="field"><label for="pallet_h" data-i18n="labelPalletH">最大堆高 (mm，不含卡板)</label><input type="number" id="pallet_h" placeholder="1500"></div>
+          <div class="field"><label for="pallet_maxwt" data-i18n="labelPalletMaxWt">最大载重 (kg，留空不限)</label><input type="number" id="pallet_maxwt" placeholder="不限" data-i18n-ph="placeholderUnlimited"></div>
         </div>
-        <button class="action" onclick="calcPallet()">计算卡板利用率 →</button>
+        <button class="action" data-i18n="btnCalcPallet" onclick="calcPallet()">计算卡板利用率 →</button>
       </div>
       <div class="results-col" id="palletResultsWrap">
-        <div class="note empty-card">点击左侧「计算卡板利用率」查看结果。</div>
+        <div class="note empty-card" data-i18n="step2EmptyNote">点击左侧「计算卡板利用率」查看结果。</div>
       </div>
     </div>
   </div>
@@ -439,51 +449,51 @@
   <div class="stage" data-step="03" id="stage03">
     <div class="stage-head">
       <div class="eyebrow">Step 03</div>
-      <h2>货柜装载</h2>
-      <p class="hint">选择按卡板整齐装入货柜，或外箱直接散装铺地，计算装载数量与空间利用率。</p>
+      <h2 data-i18n="step3Title">货柜装载</h2>
+      <p class="hint" data-i18n="step3Hint">选择按卡板整齐装入货柜，或外箱直接散装铺地，计算装载数量与空间利用率。</p>
     </div>
     <div class="stage-body">
       <div class="inputs-col">
-        <div class="group-label first">货柜（Container）</div>
+        <div class="group-label first" data-i18n="groupContainer">货柜（Container）</div>
         <div class="field-row">
           <div class="field" style="flex:1.4">
-            <label for="container_preset">规格</label>
+            <label for="container_preset" data-i18n="labelSpec">规格</label>
             <select id="container_preset" onchange="applyContainerPreset()">
-              <option value="5898,2352,2393">20GP (内尺寸约)</option>
-              <option value="12032,2352,2393">40GP (内尺寸约)</option>
-              <option value="12032,2352,2698" selected>40HQ (内尺寸约)</option>
-              <option value="13556,2352,2698">45HQ (内尺寸约)</option>
-              <option value="custom">自定义</option>
+              <option value="5898,2352,2393" data-i18n="contOpt1">20GP (内尺寸约)</option>
+              <option value="12032,2352,2393" data-i18n="contOpt2">40GP (内尺寸约)</option>
+              <option value="12032,2352,2698" selected data-i18n="contOpt3">40HQ (内尺寸约)</option>
+              <option value="13556,2352,2698" data-i18n="contOpt4">45HQ (内尺寸约)</option>
+              <option value="custom" data-i18n="optCustom">自定义</option>
             </select>
           </div>
         </div>
         <div class="field-row">
-          <button type="button" class="mini-btn" onclick="containerPresetMgr.saveCurrent()">＋ 存为常用预设</button>
-          <button type="button" class="mini-btn" onclick="containerPresetMgr.deleteCurrent()">删除当前预设</button>
+          <button type="button" class="mini-btn" data-i18n="btnSavePreset" onclick="containerPresetMgr.saveCurrent()">＋ 存为常用预设</button>
+          <button type="button" class="mini-btn" data-i18n="btnDeletePreset" onclick="containerPresetMgr.deleteCurrent()">删除当前预设</button>
         </div>
         <div class="field-row">
-          <div class="field"><label for="ct_l">内长 (mm)</label><input type="number" id="ct_l" placeholder="12032"></div>
-          <div class="field"><label for="ct_w">内宽 (mm)</label><input type="number" id="ct_w" placeholder="2352"></div>
-          <div class="field"><label for="ct_h">内高 (mm)</label><input type="number" id="ct_h" placeholder="2698"></div>
+          <div class="field"><label for="ct_l" data-i18n="labelCtL">内长 (mm)</label><input type="number" id="ct_l" placeholder="12032"></div>
+          <div class="field"><label for="ct_w" data-i18n="labelCtW">内宽 (mm)</label><input type="number" id="ct_w" placeholder="2352"></div>
+          <div class="field"><label for="ct_h" data-i18n="labelCtH">内高 (mm)</label><input type="number" id="ct_h" placeholder="2698"></div>
         </div>
         <div class="divider"></div>
-        <div class="group-label">装载方式</div>
+        <div class="group-label" data-i18n="groupLoadMode">装载方式</div>
         <div class="toggle-group">
-          <button id="mode_pallet_btn" class="active" onclick="setContainerMode('pallet')">按卡板装载</button>
-          <button id="mode_floor_btn" onclick="setContainerMode('floor')">地板散装（无卡板）</button>
+          <button id="mode_pallet_btn" class="active" data-i18n="btnModePallet" onclick="setContainerMode('pallet')">按卡板装载</button>
+          <button id="mode_floor_btn" data-i18n="btnModeFloor" onclick="setContainerMode('floor')">地板散装（无卡板）</button>
         </div>
         <label class="switch-row" id="stackOption">
           <div class="label-block">
-            <div class="t">货柜内允许卡板堆叠</div>
-            <div class="d">层数按内高自动计算，勾选前请确认包装可承重</div>
+            <div class="t" data-i18n="switchStackTitle">货柜内允许卡板堆叠</div>
+            <div class="d" data-i18n="switchStackDesc">层数按内高自动计算，勾选前请确认包装可承重</div>
           </div>
           <span class="switch"><input type="checkbox" id="allow_stack" onchange="calcContainer()"><span class="switch-track"></span></span>
         </label>
         <div class="note" id="containerModeNote">先在 STEP 02 计算出卡板方案，再按卡板整齐装入货柜（通常单层；如底部包装能承重，可勾选上方"允许堆叠"）。</div>
-        <button class="action" onclick="calcContainer()">计算货柜利用率 →</button>
+        <button class="action" data-i18n="btnCalcContainer" onclick="calcContainer()">计算货柜利用率 →</button>
       </div>
       <div class="results-col" id="containerResultsWrap">
-        <div class="note empty-card">点击左侧「计算货柜利用率」查看结果。</div>
+        <div class="note empty-card" data-i18n="step3EmptyNote">点击左侧「计算货柜利用率」查看结果。</div>
       </div>
     </div>
   </div>
@@ -493,12 +503,12 @@
     <h3>汇总链路 Summary Chain</h3>
     <div class="chain" id="chainWrap"></div>
     <div class="summary-actions no-print">
-      <button type="button" class="mini-btn" id="copySummaryBtn" onclick="copySummary()">复制文字摘要</button>
-      <button type="button" class="mini-btn" id="printBtn" onclick="window.print()">打印 / 导出 PDF →</button>
+      <button type="button" class="mini-btn" id="copySummaryBtn" data-i18n="btnCopySummary" onclick="copySummary()">复制文字摘要</button>
+      <button type="button" class="mini-btn" id="printBtn" data-i18n="btnPrint" onclick="window.print()">打印 / 导出 PDF →</button>
     </div>
   </div>
 
-  <footer>本工具计算结果基于矩形整层网格排列的近似值，仅供参考；实际装箱请结合托盘伸缩、纸箱抗压、集装箱门洞尺寸等因素复核。</footer>
+  <footer data-i18n="footerDisclaimer">本工具计算结果基于矩形整层网格排列的近似值，仅供参考；实际装箱请结合托盘伸缩、纸箱抗压、集装箱门洞尺寸等因素复核。</footer>
 </div>
 
 <script>
@@ -507,6 +517,318 @@ let selectedOuterOption = null; // {a,b,c, dimX,dimY,dimZ, N, util}
 let palletResult = null;
 let containerResult = null;
 let containerMode = 'pallet';
+
+// ---------- i18n ----------
+// All user-facing text lives here, keyed the same way in zh/en. Plain string
+// values are swapped in as-is; function values are called with whatever args
+// the call site passes (for text that needs interpolated numbers/sub-labels).
+// `t(key, ...args)` below is the only thing the rest of the file calls.
+const I18N = {
+  zh: {
+    pageTitle: '装箱计算器 | Carton · Pallet · Container Loading',
+    htmlLang: 'zh-CN',
+    navStep1: '01 推荐外箱', navStep2: '02 卡板装载', navStep3: '03 货柜装载',
+    privacyNote: '全部计算在本地浏览器完成 · <b>不上传任何数据</b> · 图示比例仅供参考，非精确出图尺寸',
+
+    step1Title: '彩盒尺寸 → 推荐外箱',
+    step1Hint: '输入彩盒尺寸与每箱数量，自动搜索排列组合，推荐利用率最高的外箱规格。',
+    groupInnerBox: '彩盒（Inner Box）',
+    labelL: '长 L (mm)', labelW: '宽 W (mm)', labelH: '高 H (mm)',
+    labelUnitWeight: '单个重量 (kg)',
+    groupTarget: '推荐目标',
+    labelTargetN: '每箱数量 N (个)',
+    labelMargin: '放尺 / 整体余量 (mm)',
+    note1Step1: '程序会搜索所有 <b>a×b×c ≥ N</b> 的排列组合（含无法整除、需留空位的情况），并尝试彩盒的全部 6 种摆放方向，找出外箱体积最小（利用率最高）的组合，而不再要求 N 必须被整除。',
+    note2Step1: '「放尺/整体余量」每个维度只加一次，已包含两侧纸板厚度（常见单坑瓦楞纸板约 3-4mm，两侧合计 6-8mm）+ 装箱间隙，默认 8mm 为通用估算值；实际请按纸板材质和装箱松紧调整。',
+    btnCalcOuter: '计算推荐外箱 →',
+    step1EmptyNote: '点击左侧「计算推荐外箱」查看排列方案。',
+
+    step2Title: '外箱 → 卡板装载',
+    step2Hint: '输入外箱尺寸与卡板规格，计算每层排列方式与整板装载利用率。',
+    groupOuterCarton: '外箱（Outer Carton，可手动修改）',
+    labelSelfWt: '外箱自重 (kg)',
+    switchRotateTitle: '允许外箱侧放 / 倒放',
+    switchRotateDesc: '若产品和包装能承受，可能提高装载率；同时影响 STEP03 地板散装',
+    groupPallet: '卡板（Pallet）',
+    labelSpec: '规格',
+    palletOpt1: '1200 × 1000 亚洲标准', palletOpt2: '1100 × 1100 日标',
+    palletOpt3: '1067 × 1067 美标 CP1', palletOpt4: '1200 × 800 欧标 EUR',
+    optCustom: '自定义',
+    btnSavePreset: '＋ 存为常用预设', btnDeletePreset: '删除当前预设',
+    labelPalletL: '卡板长 (mm)', labelPalletW: '卡板宽 (mm)',
+    labelPalletH: '最大堆高 (mm，不含卡板)', labelPalletMaxWt: '最大载重 (kg，留空不限)',
+    placeholderUnlimited: '不限',
+    btnCalcPallet: '计算卡板利用率 →',
+    step2EmptyNote: '点击左侧「计算卡板利用率」查看结果。',
+
+    step3Title: '货柜装载',
+    step3Hint: '选择按卡板整齐装入货柜，或外箱直接散装铺地，计算装载数量与空间利用率。',
+    groupContainer: '货柜（Container）',
+    contOpt1: '20GP (内尺寸约)', contOpt2: '40GP (内尺寸约)',
+    contOpt3: '40HQ (内尺寸约)', contOpt4: '45HQ (内尺寸约)',
+    labelCtL: '内长 (mm)', labelCtW: '内宽 (mm)', labelCtH: '内高 (mm)',
+    groupLoadMode: '装载方式',
+    btnModePallet: '按卡板装载', btnModeFloor: '地板散装（无卡板）',
+    switchStackTitle: '货柜内允许卡板堆叠',
+    switchStackDesc: '层数按内高自动计算，勾选前请确认包装可承重',
+    containerModeNotePallet: '先在 STEP 02 计算出卡板方案，再按卡板整齐装入货柜（通常单层；如底部包装能承重，可勾选上方"允许堆叠"）。',
+    containerModeNoteFloor: '不使用卡板，外箱直接按网格方式铺满货柜地板并堆叠到顶（理论值，实际请预留装卸操作空间）。',
+    btnCalcContainer: '计算货柜利用率 →',
+    step3EmptyNote: '点击左侧「计算货柜利用率」查看结果。',
+
+    btnCopySummary: '复制文字摘要', copySuccess: '已复制 ✓',
+    copyFail: '复制失败，请手动选择文字', btnPrint: '打印 / 导出 PDF →',
+    footerDisclaimer: '本工具计算结果基于矩形整层网格排列的近似值，仅供参考；实际装箱请结合托盘伸缩、纸箱抗压、集装箱门洞尺寸等因素复核。',
+
+    rcEstOuterSize: '预计外尺寸', rcEstOuterSizeSub: 'mm (L×W×H) · 已含放尺',
+    rcInnerSize: '内尺寸（彩盒净尺寸）', rcInnerSizeSub: 'mm · 不含放尺/纸板厚度',
+    rcLayout: '排列',
+    rcLayoutSub: (cap,n) => `格位 ${cap} 个，装 ${n} 个彩盒`,
+    rcVolUtil: '体积利用率', rcVolUtilSubStep1: '彩盒体积 / 外箱体积',
+    note3Step1: (margin) => `「预计外尺寸」= 内尺寸 + 放尺/整体余量 <b>${margin}mm</b>（已包含两侧纸板厚度估算 + 装箱间隙，可在左侧「放尺/整体余量」输入框调整）。内尺寸是彩盒净尺寸堆叠后的理论最小值，外尺寸是软件按当前余量推算的参考值，<b>均非精确出图尺寸</b>——下单前请把彩盒净尺寸和用纸克数告知纸箱供应商，由供应商确认实际内径、外径与纸板厚度。`,
+    isoViewLabel: '等轴视图 Isometric View（单位 mm）',
+    isoViewLabelPallet: '等轴视图 Isometric View（单位 mm，每格 = 1 托）',
+    isoViewLabelCarton: '等轴视图 Isometric View（单位 mm，每格 = 1 外箱）',
+    emptySlotNote: (n) => `，其中 <b>${n}</b> 格留空（实际彩盒不足以填满整层/整列）`,
+    isoCaptionBox: (e0,e1,e2,emptyNote) => `每个小方块 = 1 个彩盒（${e0}×${e1}×${e2}mm）${emptyNote}`,
+    isoCaptionOuter: (cl,cw,ch) => `每个小方块 = 1 个外箱（${cl}×${cw}×${ch}mm，深色补边区已旋转90°）`,
+    gridTooMany: (total) => `共 ${total} 格，数量过多，仅显示网格划分`,
+    shapeInvalid: '尺寸无效，无法绘制。',
+
+    recommendedOptionsLabel: '推荐方案（点击选择，利用率从高到低）',
+    thArrangement: '排列 a×b×c', thOuterSize: '外箱尺寸 L×W×H', thVolUtil: '体积利用率',
+    emptySlotInline: (n) => ` (空${n})`,
+    noFeasibleOptions: '未找到可行方案。',
+
+    errStep1BoxAndN: '请输入有效的彩盒尺寸和数量（均需大于 0）。',
+    errMarginNegative: '放尺/余量不能为负数。',
+    errPalletDims: '请检查外箱与卡板尺寸输入（均需大于 0）。',
+    errPalletN: '请输入有效的每箱数量 N（需大于 0）。',
+    errPalletMaxWt: '最大载重需为大于 0 的数字，如不限请留空。',
+    errPalletNoFit: (hint) => `外箱尺寸超过卡板尺寸，单层一个都放不下${hint}，请检查外箱与卡板尺寸输入。`,
+    hintRotateTried: '（已尝试侧放/倒放仍放不下）',
+    hintRotateTryPallet: '（勾选下方"允许侧放/倒放"也许能放下）',
+    errContainerDims: '请检查货柜尺寸输入。',
+    errNeedPalletStep: '请先在 STEP 02 完成卡板计算。',
+    errStackExceedsHeight: 'STEP 02 设置的卡板堆高超过了货柜内高，一层都放不进去，请检查卡板堆高或货柜内高设置。',
+    errPalletNoFitContainer: '卡板尺寸超过货柜地板尺寸，一个都放不下，请检查卡板与货柜尺寸输入。',
+    errObDimsStep2: '请检查外箱尺寸输入（STEP 02，均需大于 0）。',
+    errObNStep2: '请输入有效的每箱数量 N（STEP 02，需大于 0）。',
+    errFloorNoFit: (hint) => `外箱尺寸超过货柜地板尺寸，一个都放不下${hint}，请检查外箱与货柜尺寸输入。`,
+    hintRotateTryFloor: '（勾选 STEP 02 的"允许侧放/倒放"也许能放下）',
+
+    rcPerLayer: '每层箱数', rcLayers: '层数',
+    rcLayersSub: (h) => `堆高 ${h}mm 限制`,
+    rcTotalCartonsPallet: '每托总箱数',
+    weightLimitedSub: '⚠ 受载重限制', heightLimitedSub: '仅受堆高限制',
+    rcTotalPcsPallet: '每托总数量', pcsUnit: 'pcs（彩盒个数）',
+    rcFootprintUtil: '底面利用率', volUtilInclStack: '含堆高空间',
+    rcGrossWeightPallet: '每托毛重', kgUnit: 'kg',
+    mixedLayoutNotePallet: '采用横竖混排（补边区旋转90°）以填满卡板剩余空间。',
+    rotateNote: (label) => `⚠ 为提高装载率，已将外箱按「${label}」方式摆放，请确认产品/包装印刷是否允许非直立摆放。`,
+
+    orientUpright: '正立（默认方向，L×W 朝下）',
+    orientSide1: '侧放（L×H 朝下，W 朝上）',
+    orientSide2: '侧放/倒放（W×H 朝下，L 朝上）',
+
+    layoutDescRotated: (nx,nz) => `${nx}×${nz}（旋转90°）`,
+    layoutDescMixed: (b1x,b1z,b2x,b2z) => `主区 ${b1x}×${b1z} + 补边 ${b2x}×${b2z}（横竖混排）`,
+
+    rcPalletsPerContainer: '可装卡板数',
+    rcPalletsSub: (desc,n) => `${desc}，堆 ${n} 层`,
+    rcTotalCartonsContainer: '总外箱数',
+    rcTotalCartonsContainerSub: (pallets,perPallet) => `= ${pallets} 托 × ${perPallet} 箱/托`,
+    rcTotalPcsContainer: '总数量',
+    footprintUtilContainerSub: '卡板footprint / 货柜地板',
+    volUtilByPalletHeight: '按卡板堆高计算',
+    rcEstTotalWeight: '预估总重', kgExclPalletSub: 'kg（不含卡板自重）',
+    mixedLayoutNoteContainer: '采用横竖混排（补边区旋转90°）以填满货柜剩余空间。',
+    stackNote: (n) => `⚠ 已按货柜内高自动计算堆叠 ${n} 层，实际是否可行取决于底层卡板货物的抗压强度与稳定性，请与工厂确认包装能否承重堆叠。`,
+
+    rcTotalCartonsFloorSub: '散装地板直堆',
+    rcStackLayers: '堆叠层数',
+    rcStackLayersSub: (h) => `货柜内高 ${h}mm 限制`,
+    floorWarnNote: '⚠ 散装直堆通常无法承受满高压重，实际层数请结合纸箱抗压强度核实。',
+
+    alertNeedValidSize: '请先输入有效的尺寸再保存。',
+    promptPresetName: '给这个预设起个名字（比如"工厂常用卡板"）：',
+    alertNotCustomPreset: '当前选中的不是自定义预设，无法删除。',
+    confirmDeletePreset: (name) => `删除预设「${name}」？`
+  },
+  en: {
+    pageTitle: 'Carton Calculator | Carton · Pallet · Container Loading',
+    htmlLang: 'en',
+    navStep1: '01 Outer Carton', navStep2: '02 Pallet Loading', navStep3: '03 Container Loading',
+    privacyNote: 'All calculations run locally in your browser · <b>no data is ever uploaded</b> · diagrams are illustrative only, not precise technical drawings',
+
+    step1Title: 'Inner Box Size → Recommended Outer Carton',
+    step1Hint: 'Enter the inner box size and quantity per carton — the tool searches every arrangement and recommends the highest-utilization outer carton.',
+    groupInnerBox: 'Inner Box',
+    labelL: 'Length L (mm)', labelW: 'Width W (mm)', labelH: 'Height H (mm)',
+    labelUnitWeight: 'Unit weight (kg)',
+    groupTarget: 'Target',
+    labelTargetN: 'Qty per carton N (pcs)',
+    labelMargin: 'Allowance / overall margin (mm)',
+    note1Step1: 'The tool searches every <b>a×b×c ≥ N</b> arrangement (including ones that don’t divide evenly and leave empty slots), tries all 6 orientations of the inner box, and recommends the smallest-volume (highest-utilization) combination — N no longer has to divide exactly.',
+    note2Step1: 'The "allowance / overall margin" is added once per dimension, and already covers both sides’ board thickness (common single-wall corrugated board is ~3–4mm per side, ~6–8mm combined) plus packing clearance. The 8mm default is a general estimate — adjust it to match your actual board material and fit.',
+    btnCalcOuter: 'Calculate Recommended Carton →',
+    step1EmptyNote: 'Click "Calculate Recommended Carton" on the left to see arrangement options.',
+
+    step2Title: 'Outer Carton → Pallet Loading',
+    step2Hint: 'Enter the outer carton size and pallet specs to calculate the per-layer arrangement and overall pallet utilization.',
+    groupOuterCarton: 'Outer Carton (editable)',
+    labelSelfWt: 'Empty carton weight (kg)',
+    switchRotateTitle: 'Allow carton on its side / upside down',
+    switchRotateDesc: 'May improve loading efficiency if the product/packaging can take it; also affects STEP03 floor loading',
+    groupPallet: 'Pallet',
+    labelSpec: 'Spec',
+    palletOpt1: '1200 × 1000 Asia standard', palletOpt2: '1100 × 1100 Japan standard',
+    palletOpt3: '1067 × 1067 US CP1', palletOpt4: '1200 × 800 EUR standard',
+    optCustom: 'Custom',
+    btnSavePreset: '＋ Save as preset', btnDeletePreset: 'Delete current preset',
+    labelPalletL: 'Pallet length (mm)', labelPalletW: 'Pallet width (mm)',
+    labelPalletH: 'Max stack height (mm, excl. pallet)', labelPalletMaxWt: 'Max weight (kg, blank = unlimited)',
+    placeholderUnlimited: 'Unlimited',
+    btnCalcPallet: 'Calculate Pallet Utilization →',
+    step2EmptyNote: 'Click "Calculate Pallet Utilization" on the left to see results.',
+
+    step3Title: 'Container Loading',
+    step3Hint: 'Choose to load by pallet, or stack outer cartons directly on the floor, and calculate loading quantity and space utilization.',
+    groupContainer: 'Container',
+    contOpt1: '20GP (approx. internal size)', contOpt2: '40GP (approx. internal size)',
+    contOpt3: '40HQ (approx. internal size)', contOpt4: '45HQ (approx. internal size)',
+    labelCtL: 'Internal length (mm)', labelCtW: 'Internal width (mm)', labelCtH: 'Internal height (mm)',
+    groupLoadMode: 'Loading Method',
+    btnModePallet: 'By pallet', btnModeFloor: 'Floor loading (no pallet)',
+    switchStackTitle: 'Allow stacking pallets in container',
+    switchStackDesc: 'Number of layers is auto-calculated from internal height — confirm the packaging can bear the load before enabling',
+    containerModeNotePallet: 'First calculate a pallet plan in STEP 02, then load pallets neatly into the container (usually a single layer; enable "allow stacking" above if the bottom packaging can bear the load).',
+    containerModeNoteFloor: 'No pallet — outer cartons are arranged in a grid directly on the container floor and stacked to the top (a theoretical value; leave room for loading/unloading in practice).',
+    btnCalcContainer: 'Calculate Container Utilization →',
+    step3EmptyNote: 'Click "Calculate Container Utilization" on the left to see results.',
+
+    btnCopySummary: 'Copy text summary', copySuccess: 'Copied ✓',
+    copyFail: 'Copy failed — please select the text manually', btnPrint: 'Print / Export PDF →',
+    footerDisclaimer: 'Results are approximate, based on rectangular full-layer grid arrangements, for reference only — verify against pallet overhang, carton compression strength, container door opening size, and other real-world factors before finalizing.',
+
+    rcEstOuterSize: 'Est. Outer Size', rcEstOuterSizeSub: 'mm (L×W×H) · incl. allowance',
+    rcInnerSize: 'Inner Size (net box stack)', rcInnerSizeSub: 'mm · excl. allowance/board',
+    rcLayout: 'Layout',
+    rcLayoutSub: (cap,n) => `${cap} slots, ${n} inner box(es)`,
+    rcVolUtil: 'Volume Utilization', rcVolUtilSubStep1: 'Inner box volume / outer carton volume',
+    note3Step1: (margin) => `"Est. outer size" = inner size + allowance/margin <b>${margin}mm</b> (already includes an estimate of both sides’ board thickness plus packing clearance — adjustable in the "allowance/margin" field on the left). Inner size is the theoretical minimum after stacking the net inner-box sizes; outer size is the software’s reference estimate at the current allowance — <b>neither is a precise production drawing</b>. Before ordering, give the inner box net size and board grade to your carton supplier and have them confirm the actual internal/external dimensions and board thickness.`,
+    isoViewLabel: 'Isometric View (mm)',
+    isoViewLabelPallet: 'Isometric View (mm, each cell = 1 pallet)',
+    isoViewLabelCarton: 'Isometric View (mm, each cell = 1 outer carton)',
+    emptySlotNote: (n) => `, including <b>${n}</b> empty slot(s) (not enough inner boxes to fill the full layer/row)`,
+    isoCaptionBox: (e0,e1,e2,emptyNote) => `Each small block = 1 inner box (${e0}×${e1}×${e2}mm)${emptyNote}`,
+    isoCaptionOuter: (cl,cw,ch) => `Each small block = 1 outer carton (${cl}×${cw}×${ch}mm; the darker fill-in area is rotated 90°)`,
+    gridTooMany: (total) => `${total} slots total — too many to draw individually, showing grid divisions only`,
+    shapeInvalid: 'Invalid dimensions — cannot draw.',
+
+    recommendedOptionsLabel: 'Recommended Options (click to select, sorted by utilization)',
+    thArrangement: 'Layout a×b×c', thOuterSize: 'Outer Size L×W×H', thVolUtil: 'Volume Utilization',
+    emptySlotInline: (n) => ` (empty ${n})`,
+    noFeasibleOptions: 'No feasible option found.',
+
+    errStep1BoxAndN: 'Please enter a valid inner box size and quantity (all must be greater than 0).',
+    errMarginNegative: 'The allowance/margin cannot be negative.',
+    errPalletDims: 'Please check the outer carton and pallet dimensions (all must be greater than 0).',
+    errPalletN: 'Please enter a valid quantity per carton N (must be greater than 0).',
+    errPalletMaxWt: 'Max weight must be a number greater than 0 — leave it blank if unlimited.',
+    errPalletNoFit: (hint) => `The outer carton is larger than the pallet — not even one fits per layer${hint}. Please check the outer carton and pallet dimensions.`,
+    hintRotateTried: ' (still doesn’t fit even with side/upside-down allowed)',
+    hintRotateTryPallet: ' (try enabling "allow side/upside-down" below)',
+    errContainerDims: 'Please check the container dimensions.',
+    errNeedPalletStep: 'Please complete the pallet calculation in STEP 02 first.',
+    errStackExceedsHeight: 'The stack height set in STEP 02 exceeds the container’s internal height — not even one layer fits. Please check the stack height or container internal height.',
+    errPalletNoFitContainer: 'The pallet is larger than the container floor — not even one fits. Please check the pallet and container dimensions.',
+    errObDimsStep2: 'Please check the outer carton dimensions (STEP 02, all must be greater than 0).',
+    errObNStep2: 'Please enter a valid quantity per carton N (STEP 02, must be greater than 0).',
+    errFloorNoFit: (hint) => `The outer carton is larger than the container floor — not even one fits${hint}. Please check the outer carton and container dimensions.`,
+    hintRotateTryFloor: ' (try enabling "allow side/upside-down" in STEP 02)',
+
+    rcPerLayer: 'Cartons per Layer', rcLayers: 'Layers',
+    rcLayersSub: (h) => `limited by ${h}mm stack height`,
+    rcTotalCartonsPallet: 'Total Cartons per Pallet',
+    weightLimitedSub: '⚠ Limited by max weight', heightLimitedSub: 'Limited by stack height only',
+    rcTotalPcsPallet: 'Total Pieces per Pallet', pcsUnit: 'pcs (inner box count)',
+    rcFootprintUtil: 'Footprint Utilization', volUtilInclStack: 'incl. stack height',
+    rcGrossWeightPallet: 'Gross Weight per Pallet', kgUnit: 'kg',
+    mixedLayoutNotePallet: 'Mixed row/column layout used (fill-in area rotated 90°) to use the pallet’s remaining space.',
+    rotateNote: (label) => `⚠ To improve loading efficiency, the outer carton is oriented as "${label}" — confirm the product/packaging printing allows a non-upright orientation.`,
+
+    orientUpright: 'Upright (default, L×W face down)',
+    orientSide1: 'On its side (L×H face down, W up)',
+    orientSide2: 'On its side/upside-down (W×H face down, L up)',
+
+    layoutDescRotated: (nx,nz) => `${nx}×${nz} (rotated 90°)`,
+    layoutDescMixed: (b1x,b1z,b2x,b2z) => `Main ${b1x}×${b1z} + fill-in ${b2x}×${b2z} (mixed row/column)`,
+
+    rcPalletsPerContainer: 'Pallets per Container',
+    rcPalletsSub: (desc,n) => `${desc}, ${n} layer(s) stacked`,
+    rcTotalCartonsContainer: 'Total Outer Cartons',
+    rcTotalCartonsContainerSub: (pallets,perPallet) => `= ${pallets} pallets × ${perPallet} cartons/pallet`,
+    rcTotalPcsContainer: 'Total Pieces',
+    footprintUtilContainerSub: 'Pallet footprint / container floor',
+    volUtilByPalletHeight: 'Based on pallet stack height',
+    rcEstTotalWeight: 'Est. Total Weight', kgExclPalletSub: 'kg (excl. pallet weight)',
+    mixedLayoutNoteContainer: 'Mixed row/column layout used (fill-in area rotated 90°) to use the container’s remaining floor space.',
+    stackNote: (n) => `⚠ Stacking ${n} layer(s) was auto-calculated from the container’s internal height — whether this is actually feasible depends on the bottom pallet’s compression strength and stability. Confirm with the factory that the packaging can bear a stacked load.`,
+
+    rcTotalCartonsFloorSub: 'Direct floor stacking',
+    rcStackLayers: 'Stack Layers',
+    rcStackLayersSub: (h) => `limited by ${h}mm internal height`,
+    floorWarnNote: '⚠ Direct floor stacking usually can’t bear a full-height load — verify the actual number of layers against real carton compression strength.',
+
+    alertNeedValidSize: 'Please enter valid dimensions before saving.',
+    promptPresetName: 'Name this preset (e.g. "Factory standard pallet"):',
+    alertNotCustomPreset: 'The current selection isn’t a custom preset, so it can’t be deleted.',
+    confirmDeletePreset: (name) => `Delete preset "${name}"?`
+  }
+};
+let LANG = (function(){
+  try{ const saved = localStorage.getItem('cc_lang'); if(saved === 'zh' || saved === 'en') return saved; }catch(e){}
+  return 'zh';
+})();
+function t(key, ...args){
+  const v = I18N[LANG][key];
+  if(v === undefined) return key; // visible-but-obvious fallback if a key is ever mistyped
+  return typeof v === 'function' ? v(...args) : v;
+}
+function applyStaticI18n(){
+  document.documentElement.lang = t('htmlLang');
+  document.title = t('pageTitle');
+  document.querySelectorAll('[data-i18n]').forEach(el=>{ el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{ el.innerHTML = t(el.dataset.i18nHtml); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el=>{ el.placeholder = t(el.dataset.i18nPh); });
+}
+function updateLangToggleUI(){
+  document.getElementById('langZh').classList.toggle('active', LANG==='zh');
+  document.getElementById('langZh').setAttribute('aria-pressed', String(LANG==='zh'));
+  document.getElementById('langEn').classList.toggle('active', LANG==='en');
+  document.getElementById('langEn').setAttribute('aria-pressed', String(LANG==='en'));
+}
+function setLang(lang){
+  if(lang !== 'zh' && lang !== 'en') return;
+  LANG = lang;
+  try{ localStorage.setItem('cc_lang', lang); }catch(e){}
+  applyStaticI18n();
+  updateLangToggleUI();
+  // Re-render whatever is already on screen, in the new language, WITHOUT
+  // losing state — e.g. re-running calcOuterOptions() from scratch would
+  // silently reset STEP01 back to its top-ranked option, discarding a row
+  // the user had manually clicked. Each step below re-renders from the
+  // state already held in memory instead of recomputing from inputs.
+  if(window.__outerOptions){
+    renderOuterOptions(window.__outerOptions);
+    if(selectedOuterOption) selectOuterOption(selectedOuterOption, window.__outerOptions);
+  }
+  if(palletResult) renderPalletResult();
+  setContainerMode(containerMode); // refreshes containerModeNote text + button labels
+  if(containerResult) calcContainer(); // pure function of current inputs/containerMode — safe to redo
+  if(palletResult || containerResult) renderSummary();
+}
 
 // ---------- helpers ----------
 // reads a numeric input by id. Default/suggested numbers live in the
@@ -577,10 +899,10 @@ function makePresetManager(key, selectId, fields){
       const values = {};
       for(const f of fields){
         const v = num(f.id);
-        if(v<=0){ alert('请先输入有效的尺寸再保存。'); return; }
+        if(v<=0){ alert(t('alertNeedValidSize')); return; }
         values[f.field] = v;
       }
-      const name = prompt('给这个预设起个名字（比如"工厂常用卡板"）：');
+      const name = prompt(t('promptPresetName'));
       if(!name) return;
       const list = loadPresets(key);
       list.push({name, ...values});
@@ -591,8 +913,8 @@ function makePresetManager(key, selectId, fields){
     deleteCurrent(){
       const sel = document.getElementById(selectId);
       const opt = sel.selectedOptions[0];
-      if(!opt || opt.dataset.custom !== '1'){ alert('当前选中的不是自定义预设，无法删除。'); return; }
-      if(!confirm(`删除预设「${opt.textContent.replace(/^★ /,'')}」？`)) return;
+      if(!opt || opt.dataset.custom !== '1'){ alert(t('alertNotCustomPreset')); return; }
+      if(!confirm(t('confirmDeletePreset', opt.textContent.replace(/^★ /,'')))) return;
       const list = loadPresets(key);
       list.splice(Number(opt.dataset.idx), 1);
       savePresets(key, list);
@@ -631,11 +953,11 @@ function calcOuterOptions(){
   const N = Math.round(num('target_n'));
   const margin = num('margin_mm');
   if(L<=0 || W<=0 || H<=0 || N<=0){
-    document.getElementById('outerOptionsWrap').innerHTML = '<div class="note flag">请输入有效的彩盒尺寸和数量（均需大于 0）。</div>';
+    document.getElementById('outerOptionsWrap').innerHTML = `<div class="note flag">${t('errStep1BoxAndN')}</div>`;
     return;
   }
   if(margin<0){
-    document.getElementById('outerOptionsWrap').innerHTML = '<div class="note flag">放尺/余量不能为负数。</div>';
+    document.getElementById('outerOptionsWrap').innerHTML = `<div class="note flag">${t('errMarginNegative')}</div>`;
     return;
   }
   const edges = [L,W,H];
@@ -694,19 +1016,19 @@ function calcOuterOptions(){
 function renderOuterOptions(options){
   const wrap = document.getElementById('outerOptionsWrap');
   if(!options.length){
-    wrap.innerHTML = '<div class="note flag">未找到可行方案。</div>';
+    wrap.innerHTML = `<div class="note flag">${t('noFeasibleOptions')}</div>`;
     return;
   }
   let rows = options.map((o,i)=>`
     <tr data-idx="${i}" onclick="selectOuterOptionByIdx(${i})">
-      <td>${esc(o.a)} × ${esc(o.b)} × ${esc(o.c)}${o.capacity>o.N?` <span style="color:var(--ink-dim)">(空${esc(o.capacity-o.N)})</span>`:''}</td>
+      <td>${esc(o.a)} × ${esc(o.b)} × ${esc(o.c)}${o.capacity>o.N?` <span style="color:var(--ink-dim)">${esc(t('emptySlotInline', o.capacity-o.N))}</span>`:''}</td>
       <td>${esc(fmt(o.dimX,0))} × ${esc(fmt(o.dimY,0))} × ${esc(fmt(o.dimZ,0))} mm</td>
       <td class="util">${esc(pct(o.util))}</td>
     </tr>`).join('');
   wrap.innerHTML = `
-    <div class="group-label" style="margin-top:0;">推荐方案（点击选择，利用率从高到低）</div>
+    <div class="group-label" style="margin-top:0;">${t('recommendedOptionsLabel')}</div>
     <table class="opts">
-      <thead><tr><th>排列 a×b×c</th><th>外箱尺寸 L×W×H</th><th>体积利用率</th></tr></thead>
+      <thead><tr><th>${t('thArrangement')}</th><th>${t('thOuterSize')}</th><th>${t('thVolUtil')}</th></tr></thead>
       <tbody id="optsBody">${rows}</tbody>
     </table>
   `;
@@ -747,25 +1069,25 @@ function drawOuterDiagram(opt){
     fillCount:opt.N,
     targetW:420, targetH:340
   });
-  const emptyNote = opt.capacity>opt.N ? `，其中 <b>${esc(opt.capacity-opt.N)}</b> 格留空（实际彩盒不足以填满整层/整列）` : '';
+  const emptyNote = opt.capacity>opt.N ? esc(t('emptySlotNote', opt.capacity-opt.N)) : '';
   // innerL/W/H = 彩盒净尺寸堆叠总和（a*e0 等），不含任何余量——这是外箱内腔至少要留出的空间。
   // marginUsed 反推自 dimX - innerL，等于用户填的"放尺/整体余量"（每个维度只加一次，参见 calcOuterOptions）。
   const innerL = opt.a*opt.e0, innerW = opt.b*opt.e1, innerH = opt.c*opt.e2;
   const marginUsed = opt.dimX - innerL;
   const readouts = [
-    readoutCard('预计外尺寸', `${esc(fmt(opt.dimX,0))}×${esc(fmt(opt.dimY,0))}×${esc(fmt(opt.dimZ,0))}`, 'mm (L×W×H) · 已含放尺', 'key', 'dims'),
-    readoutCard('内尺寸（彩盒净尺寸）', `${esc(fmt(innerL,0))}×${esc(fmt(innerW,0))}×${esc(fmt(innerH,0))}`, 'mm · 不含放尺/纸板厚度', '', 'dims'),
-    readoutCard('排列', `${esc(opt.a)}×${esc(opt.b)}×${esc(opt.c)}`, `格位 ${esc(opt.capacity)} 个，装 ${esc(opt.N)} 个彩盒`, ''),
-    readoutCard('体积利用率', esc(pct(opt.util)), '彩盒体积 / 外箱体积', 'key')
+    readoutCard(t('rcEstOuterSize'), `${esc(fmt(opt.dimX,0))}×${esc(fmt(opt.dimY,0))}×${esc(fmt(opt.dimZ,0))}`, t('rcEstOuterSizeSub'), 'key', 'dims'),
+    readoutCard(t('rcInnerSize'), `${esc(fmt(innerL,0))}×${esc(fmt(innerW,0))}×${esc(fmt(innerH,0))}`, t('rcInnerSizeSub'), '', 'dims'),
+    readoutCard(t('rcLayout'), `${esc(opt.a)}×${esc(opt.b)}×${esc(opt.c)}`, esc(t('rcLayoutSub', opt.capacity, opt.N)), ''),
+    readoutCard(t('rcVolUtil'), esc(pct(opt.util)), t('rcVolUtilSubStep1'), 'key')
   ].join('');
   wrap.innerHTML = `
     <div class="readout-grid">${readouts}</div>
-    <div class="note">「预计外尺寸」= 内尺寸 + 放尺/整体余量 <b>${esc(fmt(marginUsed,1))}mm</b>（已包含两侧纸板厚度估算 + 装箱间隙，可在左侧「放尺/整体余量」输入框调整）。内尺寸是彩盒净尺寸堆叠后的理论最小值，外尺寸是软件按当前余量推算的参考值，<b>均非精确出图尺寸</b>——下单前请把彩盒净尺寸和用纸克数告知纸箱供应商，由供应商确认实际内径、外径与纸板厚度。</div>
+    <div class="note">${t('note3Step1', esc(fmt(marginUsed,1)))}</div>
     <div class="diagram-box">
       <div class="view">
-        <div class="view-label">等轴视图 Isometric View（单位 mm）</div>
+        <div class="view-label">${t('isoViewLabel')}</div>
         ${iso}
-        <div class="iso-caption">每个小方块 = 1 个彩盒（${esc(opt.e0)}×${esc(opt.e1)}×${esc(opt.e2)}mm）${emptyNote}</div>
+        <div class="iso-caption">${esc(t('isoCaptionBox', opt.e0, opt.e1, opt.e2, emptyNote))}</div>
       </div>
     </div>
   `;
@@ -857,7 +1179,7 @@ function drawDimension(p1, p2, label, allPts){
 function renderIsoScene(opts){
   const {outerL,outerW,outerH,itemL,itemW,itemH,nx,nz,ny,targetW=420,targetH=340,maxItems=260,fillCount=Infinity} = opts;
   const blocks = opts.blocks || [{x0:0, z0:0, nx, nz, itemDimX:itemL, itemDimZ:itemW}];
-  if(outerL<=0||outerW<=0||outerH<=0) return '<div class="note flag">尺寸无效，无法绘制。</div>';
+  if(outerL<=0||outerW<=0||outerH<=0) return `<div class="note flag">${t('shapeInvalid')}</div>`;
 
   const rawW = (outerL+outerW)*ISO_COS;
   const rawH = (outerL+outerW)*ISO_SIN + outerH;
@@ -978,7 +1300,7 @@ function renderIsoScene(opts){
     const wfMinX = Math.min(c.a[0],c.b[0],c.c[0],c.d[0],c.e[0],c.f[0],c.g[0],c.h[0]);
     const wfMaxX = Math.max(c.a[0],c.b[0],c.c[0],c.d[0],c.e[0],c.f[0],c.g[0],c.h[0]);
     const wfMaxY = Math.max(c.a[1],c.b[1],c.c[1],c.d[1],c.e[1],c.f[1],c.g[1],c.h[1]);
-    itemsSvg = gridLines + `<text x="${((wfMinX+wfMaxX)/2).toFixed(1)}" y="${(wfMaxY+24).toFixed(1)}" font-family="var(--font-mono)" font-size="9.5" fill="var(--ink-dim)" text-anchor="middle">共 ${total} 格，数量过多，仅显示网格划分</text>`;
+    itemsSvg = gridLines + `<text x="${((wfMinX+wfMaxX)/2).toFixed(1)}" y="${(wfMaxY+24).toFixed(1)}" font-family="var(--font-mono)" font-size="9.5" fill="var(--ink-dim)" text-anchor="middle">${esc(t('gridTooMany', total))}</text>`;
   }
 
   // Crop the canvas to the ACTUAL drawn content instead of always emitting a
@@ -1051,7 +1373,7 @@ function twoBandSplit(dimX, dimZ, oa, ob, splitAxis){
   return {
     count: block1.nx*block1.nz + block2.nx*block2.nz,
     blocks: [block1, block2],
-    desc: `主区 ${block1.nx}×${block1.nz} + 补边 ${block2.nx}×${block2.nz}（横竖混排）`
+    desc: t('layoutDescMixed', block1.nx, block1.nz, block2.nx, block2.nz)
   };
 }
 
@@ -1062,7 +1384,7 @@ function bestMixedLayout(dimX, dimZ, e1, e2){
   candidates.push({count:pureA.nx*pureA.nz, blocks:[blockDesc(0,0,e1,e2,pureA.nx,pureA.nz)], desc:`${pureA.nx}×${pureA.nz}`});
 
   const pureB = {nx:Math.floor(dimX/e2), nz:Math.floor(dimZ/e1)};
-  candidates.push({count:pureB.nx*pureB.nz, blocks:[blockDesc(0,0,e2,e1,pureB.nx,pureB.nz)], desc:`${pureB.nx}×${pureB.nz}（旋转90°）`});
+  candidates.push({count:pureB.nx*pureB.nz, blocks:[blockDesc(0,0,e2,e1,pureB.nx,pureB.nz)], desc:t('layoutDescRotated', pureB.nx, pureB.nz)});
 
   if(e1 !== e2){
     // NOTE: z-splits for both orientations are evaluated before x-splits (not
@@ -1096,11 +1418,11 @@ function bestMixedLayout(dimX, dimZ, e1, e2){
 // tried, reproducing the pre-rotation behavior exactly.
 function bestOrientedLayout(footprintDimX, footprintDimZ, maxHeight, boxL, boxW, boxH, allowRotate){
   const orientations = [
-    {vert: boxH, f1: boxL, f2: boxW, label: '正立（默认方向，L×W 朝下）', rotated: false}
+    {vert: boxH, f1: boxL, f2: boxW, label: t('orientUpright'), rotated: false}
   ];
   if(allowRotate){
-    orientations.push({vert: boxW, f1: boxL, f2: boxH, label: '侧放（L×H 朝下，W 朝上）', rotated: true});
-    orientations.push({vert: boxL, f1: boxW, f2: boxH, label: '侧放/倒放（W×H 朝下，L 朝上）', rotated: true});
+    orientations.push({vert: boxW, f1: boxL, f2: boxH, label: t('orientSide1'), rotated: true});
+    orientations.push({vert: boxL, f1: boxW, f2: boxH, label: t('orientSide2'), rotated: true});
   }
   let best = null;
   orientations.forEach(o=>{
@@ -1141,22 +1463,22 @@ function calcPallet(){
   const allowRotate = document.getElementById('allow_rotate').checked;
 
   if(cl<=0||cw<=0||ch<=0||pl<=0||pw<=0||pmaxH<=0){
-    document.getElementById('palletResultsWrap').innerHTML = '<div class="note flag">请检查外箱与卡板尺寸输入（均需大于 0）。</div>';
+    document.getElementById('palletResultsWrap').innerHTML = `<div class="note flag">${t('errPalletDims')}</div>`;
     return;
   }
   if(n<=0){
-    document.getElementById('palletResultsWrap').innerHTML = '<div class="note flag">请输入有效的每箱数量 N（需大于 0）。</div>';
+    document.getElementById('palletResultsWrap').innerHTML = `<div class="note flag">${t('errPalletN')}</div>`;
     return;
   }
   if(pmaxWtRaw !== '' && (pmaxWt===null || isNaN(pmaxWt) || pmaxWt<=0)){
-    document.getElementById('palletResultsWrap').innerHTML = '<div class="note flag">最大载重需为大于 0 的数字，如不限请留空。</div>';
+    document.getElementById('palletResultsWrap').innerHTML = `<div class="note flag">${t('errPalletMaxWt')}</div>`;
     return;
   }
 
   const oriented = bestOrientedLayout(pl, pw, pmaxH, cl, cw, ch, allowRotate);
   if(!oriented){
-    const hint = allowRotate ? '（已尝试侧放/倒放仍放不下）' : '（勾选下方"允许侧放/倒放"也许能放下）';
-    document.getElementById('palletResultsWrap').innerHTML = `<div class="note flag">外箱尺寸超过卡板尺寸，单层一个都放不下${hint}，请检查外箱与卡板尺寸输入。</div>`;
+    const hint = allowRotate ? t('hintRotateTried') : t('hintRotateTryPallet');
+    document.getElementById('palletResultsWrap').innerHTML = `<div class="note flag">${t('errPalletNoFit', hint)}</div>`;
     return;
   }
   const layout = oriented.layout;
@@ -1193,24 +1515,24 @@ function renderPalletResult(){
     blocks:r.layout.blocks, itemH:r.vert, ny:effectiveLayers,
     targetW:440, targetH:340
   });
-  const mixedNote = r.layout.blocks.length>1 ? '<div class="note flag">采用横竖混排（补边区旋转90°）以填满卡板剩余空间。</div>' : '';
-  const rotateNote = r.rotated ? `<div class="note flag">⚠ 为提高装载率，已将外箱按「${esc(r.orientLabel)}」方式摆放，请确认产品/包装印刷是否允许非直立摆放。</div>` : '';
+  const mixedNote = r.layout.blocks.length>1 ? `<div class="note flag">${t('mixedLayoutNotePallet')}</div>` : '';
+  const rotateNote = r.rotated ? `<div class="note flag">${esc(t('rotateNote', r.orientLabel))}</div>` : '';
   const readouts = [
-    readoutCard('每层箱数', esc(r.perLayer), esc(r.layout.desc), 'key'),
-    readoutCard('层数', esc(r.layers), `堆高 ${esc(fmt(r.pmaxH,0))}mm 限制`, ''),
-    readoutCard('每托总箱数', esc(r.totalCartons), r.weightLimited ? '⚠ 受载重限制' : '仅受堆高限制', 'key'),
-    readoutCard('每托总数量', esc(r.totalPcs), 'pcs（彩盒个数）', ''),
-    readoutCard('底面利用率', esc(pct(r.footprintUtil)), esc(r.layout.desc), r.footprintUtil>0.85?'key':''),
-    readoutCard('体积利用率', esc(pct(r.volUtil)), '含堆高空间', r.volUtil>0.6?'key':''),
-    readoutCard('每托毛重', esc(fmt(r.totalWeight,1)), 'kg', '')
+    readoutCard(t('rcPerLayer'), esc(r.perLayer), esc(r.layout.desc), 'key'),
+    readoutCard(t('rcLayers'), esc(r.layers), esc(t('rcLayersSub', fmt(r.pmaxH,0))), ''),
+    readoutCard(t('rcTotalCartonsPallet'), esc(r.totalCartons), r.weightLimited ? t('weightLimitedSub') : t('heightLimitedSub'), 'key'),
+    readoutCard(t('rcTotalPcsPallet'), esc(r.totalPcs), t('pcsUnit'), ''),
+    readoutCard(t('rcFootprintUtil'), esc(pct(r.footprintUtil)), esc(r.layout.desc), r.footprintUtil>0.85?'key':''),
+    readoutCard(t('rcVolUtil'), esc(pct(r.volUtil)), t('volUtilInclStack'), r.volUtil>0.6?'key':''),
+    readoutCard(t('rcGrossWeightPallet'), esc(fmt(r.totalWeight,1)), t('kgUnit'), '')
   ].join('');
   wrap.innerHTML = `
     <div class="readout-grid">${readouts}</div>
     <div class="diagram-box">
       <div class="view">
-        <div class="view-label">等轴视图 Isometric View（单位 mm）</div>
+        <div class="view-label">${t('isoViewLabel')}</div>
         ${iso}
-        <div class="iso-caption">每个小方块 = 1 个外箱（${esc(fmt(r.cl,0))}×${esc(fmt(r.cw,0))}×${esc(fmt(r.ch,0))}mm，深色补边区已旋转90°）</div>
+        <div class="iso-caption">${esc(t('isoCaptionOuter', fmt(r.cl,0), fmt(r.cw,0), fmt(r.ch,0)))}</div>
       </div>
     </div>
     ${mixedNote}
@@ -1235,32 +1557,32 @@ function setContainerMode(mode){
   document.getElementById('mode_floor_btn').classList.toggle('active', mode==='floor');
   document.getElementById('stackOption').style.display = mode==='pallet' ? 'flex' : 'none';
   document.getElementById('containerModeNote').textContent = mode==='pallet'
-    ? '先在 STEP 02 计算出卡板方案，再按卡板整齐装入货柜（通常单层；如底部包装能承重，可勾选上方"允许堆叠"）。'
-    : '不使用卡板，外箱直接按网格方式铺满货柜地板并堆叠到顶（理论值，实际请预留装卸操作空间）。';
+    ? t('containerModeNotePallet')
+    : t('containerModeNoteFloor');
 }
 
 function calcContainer(){
   const ctl = num('ct_l'), ctw = num('ct_w'), cth = num('ct_h');
   if(ctl<=0||ctw<=0||cth<=0){
-    document.getElementById('containerResultsWrap').innerHTML = '<div class="note flag">请检查货柜尺寸输入。</div>';
+    document.getElementById('containerResultsWrap').innerHTML = `<div class="note flag">${t('errContainerDims')}</div>`;
     return;
   }
   const contVol = ctl*ctw*cth;
 
   if(containerMode === 'pallet'){
     if(!palletResult){
-      document.getElementById('containerResultsWrap').innerHTML = '<div class="note flag">请先在 STEP 02 完成卡板计算。</div>';
+      document.getElementById('containerResultsWrap').innerHTML = `<div class="note flag">${t('errNeedPalletStep')}</div>`;
       return;
     }
     const pl = palletResult.pl, pw = palletResult.pw;
     if(palletResult.pmaxH > cth){
-      document.getElementById('containerResultsWrap').innerHTML = '<div class="note flag">STEP 02 设置的卡板堆高超过了货柜内高，一层都放不进去，请检查卡板堆高或货柜内高设置。</div>';
+      document.getElementById('containerResultsWrap').innerHTML = `<div class="note flag">${t('errStackExceedsHeight')}</div>`;
       return;
     }
     const layout = bestMixedLayout(ctl, ctw, pl, pw);
     const palletsFootprint = layout.count;
     if(palletsFootprint <= 0){
-      document.getElementById('containerResultsWrap').innerHTML = '<div class="note flag">卡板尺寸超过货柜地板尺寸，一个都放不下，请检查卡板与货柜尺寸输入。</div>';
+      document.getElementById('containerResultsWrap').innerHTML = `<div class="note flag">${t('errPalletNoFitContainer')}</div>`;
       return;
     }
     const allowStack = document.getElementById('allow_stack').checked;
@@ -1278,22 +1600,22 @@ function calcContainer(){
       blocks:layout.blocks, itemH:palletResult.pmaxH, ny:stackLayers,
       targetW:520, targetH:320
     });
-    const mixedNote = layout.blocks.length>1 ? '<div class="note flag">采用横竖混排（补边区旋转90°）以填满货柜剩余空间。</div>' : '';
-    const stackNote = stackLayers>1 ? `<div class="note flag">⚠ 已按货柜内高自动计算堆叠 ${esc(stackLayers)} 层，实际是否可行取决于底层卡板货物的抗压强度与稳定性，请与工厂确认包装能否承重堆叠。</div>` : '';
+    const mixedNote = layout.blocks.length>1 ? `<div class="note flag">${t('mixedLayoutNoteContainer')}</div>` : '';
+    const stackNote = stackLayers>1 ? `<div class="note flag">${esc(t('stackNote', stackLayers))}</div>` : '';
     const readouts1 = [
-      readoutCard('可装卡板数', esc(palletsPerContainer), stackLayers>1 ? `${esc(layout.desc)}，堆 ${esc(stackLayers)} 层` : esc(layout.desc), 'key'),
-      readoutCard('总外箱数', esc(cartonsTotal), `= ${esc(palletsPerContainer)} 托 × ${esc(palletResult.totalCartons)} 箱/托`, 'key'),
-      readoutCard('总数量', esc(pcsTotal), 'pcs（彩盒个数）', ''),
-      readoutCard('地板利用率', esc(pct(footprintUtil)), '卡板footprint / 货柜地板', footprintUtil>0.7?'key':''),
-      readoutCard('体积利用率', esc(pct(volUtil)), '按卡板堆高计算', volUtil>0.5?'key':''),
-      readoutCard('预估总重', esc(fmt(totalWeight,0)), 'kg（不含卡板自重）', '')
+      readoutCard(t('rcPalletsPerContainer'), esc(palletsPerContainer), stackLayers>1 ? esc(t('rcPalletsSub', layout.desc, stackLayers)) : esc(layout.desc), 'key'),
+      readoutCard(t('rcTotalCartonsContainer'), esc(cartonsTotal), esc(t('rcTotalCartonsContainerSub', palletsPerContainer, palletResult.totalCartons)), 'key'),
+      readoutCard(t('rcTotalPcsContainer'), esc(pcsTotal), t('pcsUnit'), ''),
+      readoutCard(t('rcFootprintUtil'), esc(pct(footprintUtil)), t('footprintUtilContainerSub'), footprintUtil>0.7?'key':''),
+      readoutCard(t('rcVolUtil'), esc(pct(volUtil)), t('volUtilByPalletHeight'), volUtil>0.5?'key':''),
+      readoutCard(t('rcEstTotalWeight'), esc(fmt(totalWeight,0)), t('kgExclPalletSub'), '')
     ].join('');
 
     document.getElementById('containerResultsWrap').innerHTML = `
       <div class="readout-grid">${readouts1}</div>
       <div class="diagram-box">
         <div class="view">
-          <div class="view-label">等轴视图 Isometric View（单位 mm，每格 = 1 托）</div>
+          <div class="view-label">${t('isoViewLabelPallet')}</div>
           ${iso}
         </div>
       </div>
@@ -1307,18 +1629,18 @@ function calcContainer(){
     const selfwt = num('ob_selfwt'), unitwt = num('ib_wt');
     const cartonWt = selfwt + n*unitwt;
     if(cl<=0||cw<=0||ch<=0){
-      document.getElementById('containerResultsWrap').innerHTML = '<div class="note flag">请检查外箱尺寸输入（STEP 02，均需大于 0）。</div>';
+      document.getElementById('containerResultsWrap').innerHTML = `<div class="note flag">${t('errObDimsStep2')}</div>`;
       return;
     }
     if(n<=0){
-      document.getElementById('containerResultsWrap').innerHTML = '<div class="note flag">请输入有效的每箱数量 N（STEP 02，需大于 0）。</div>';
+      document.getElementById('containerResultsWrap').innerHTML = `<div class="note flag">${t('errObNStep2')}</div>`;
       return;
     }
     const allowRotate = document.getElementById('allow_rotate').checked;
     const oriented = bestOrientedLayout(ctl, ctw, cth, cl, cw, ch, allowRotate);
     if(!oriented){
-      const hint = allowRotate ? '（已尝试侧放/倒放仍放不下）' : '（勾选 STEP 02 的"允许侧放/倒放"也许能放下）';
-      document.getElementById('containerResultsWrap').innerHTML = `<div class="note flag">外箱尺寸超过货柜地板尺寸，一个都放不下${hint}，请检查外箱与货柜尺寸输入。</div>`;
+      const hint = allowRotate ? t('hintRotateTried') : t('hintRotateTryFloor');
+      document.getElementById('containerResultsWrap').innerHTML = `<div class="note flag">${t('errFloorNoFit', hint)}</div>`;
       return;
     }
     const layout = oriented.layout;
@@ -1335,29 +1657,29 @@ function calcContainer(){
       blocks:layout.blocks, itemH:oriented.vert, ny:nz,
       targetW:520, targetH:320
     });
-    const mixedNote = layout.blocks.length>1 ? '<div class="note flag">采用横竖混排（补边区旋转90°）以填满货柜地板剩余空间。</div>' : '';
-    const rotateNote = oriented.rotated ? `<div class="note flag">⚠ 为提高装载率，已将外箱按「${esc(oriented.orientLabel)}」方式摆放，请确认产品/包装印刷是否允许非直立摆放。</div>` : '';
+    const mixedNote = layout.blocks.length>1 ? `<div class="note flag">${t('mixedLayoutNoteContainer')}</div>` : '';
+    const rotateNote = oriented.rotated ? `<div class="note flag">${esc(t('rotateNote', oriented.orientLabel))}</div>` : '';
     const readouts2 = [
-      readoutCard('每层箱数', esc(perLayer), esc(layout.desc), 'key'),
-      readoutCard('堆叠层数', esc(nz), `货柜内高 ${esc(fmt(cth,0))}mm 限制`, ''),
-      readoutCard('总外箱数', esc(totalCartons), '散装地板直堆', 'key'),
-      readoutCard('总数量', esc(totalPcs), 'pcs（彩盒个数）', ''),
-      readoutCard('地板利用率', esc(pct(footprintUtil)), '', footprintUtil>0.8?'key':''),
-      readoutCard('体积利用率', esc(pct(volUtil)), '', volUtil>0.6?'key':''),
-      readoutCard('预估总重', esc(fmt(totalWeight,0)), 'kg', '')
+      readoutCard(t('rcPerLayer'), esc(perLayer), esc(layout.desc), 'key'),
+      readoutCard(t('rcStackLayers'), esc(nz), esc(t('rcStackLayersSub', fmt(cth,0))), ''),
+      readoutCard(t('rcTotalCartonsContainer'), esc(totalCartons), t('rcTotalCartonsFloorSub'), 'key'),
+      readoutCard(t('rcTotalPcsContainer'), esc(totalPcs), t('pcsUnit'), ''),
+      readoutCard(t('rcFootprintUtil'), esc(pct(footprintUtil)), '', footprintUtil>0.8?'key':''),
+      readoutCard(t('rcVolUtil'), esc(pct(volUtil)), '', volUtil>0.6?'key':''),
+      readoutCard(t('rcEstTotalWeight'), esc(fmt(totalWeight,0)), t('kgUnit'), '')
     ].join('');
 
     document.getElementById('containerResultsWrap').innerHTML = `
       <div class="readout-grid">${readouts2}</div>
       <div class="diagram-box">
         <div class="view">
-          <div class="view-label">等轴视图 Isometric View（单位 mm，每格 = 1 外箱）</div>
+          <div class="view-label">${t('isoViewLabelCarton')}</div>
           ${iso}
         </div>
       </div>
       ${mixedNote}
       ${rotateNote}
-      <div class="note flag">⚠ 散装直堆通常无法承受满高压重，实际层数请结合纸箱抗压强度核实。</div>
+      <div class="note flag">${t('floorWarnNote')}</div>
     `;
     containerResult = {mode:'floor', ctl,ctw,cth, perLayer, nz, totalCartons, totalPcs, footprintUtil, volUtil, totalWeight};
   }
@@ -1373,14 +1695,18 @@ function renderSummary(){
   // this ran, which is exactly why they looked like they had 0px between them.
   document.getElementById('summaryWrap').style.display = 'flex';
   const n = num('ob_n');
+  const unitLabel = LANG === 'zh' ? '外箱' : 'Carton';
+  const pcsPerBoxLabel = LANG === 'zh' ? 'pcs / 箱' : 'pcs / carton';
+  const boxPerPalletLabel = LANG === 'zh' ? '箱 / 托' : 'cartons / pallet';
+  const pcsPerPalletLabel = LANG === 'zh' ? 'pcs / 托' : 'pcs / pallet';
   let chain = `
-    <div class="node"><div class="n">1</div><div class="l">外箱</div></div>
+    <div class="node"><div class="n">1</div><div class="l">${unitLabel}</div></div>
     <div class="arrow">→</div>
-    <div class="node"><div class="n">${esc(n)}</div><div class="l">pcs / 箱</div></div>
+    <div class="node"><div class="n">${esc(n)}</div><div class="l">${pcsPerBoxLabel}</div></div>
     <div class="arrow">→</div>
-    <div class="node"><div class="n">${esc(palletResult.totalCartons)}</div><div class="l">箱 / 托</div></div>
+    <div class="node"><div class="n">${esc(palletResult.totalCartons)}</div><div class="l">${boxPerPalletLabel}</div></div>
     <div class="arrow">→</div>
-    <div class="node"><div class="n">${esc(palletResult.totalPcs)}</div><div class="l">pcs / 托</div></div>
+    <div class="node"><div class="n">${esc(palletResult.totalPcs)}</div><div class="l">${pcsPerPalletLabel}</div></div>
   `;
   document.getElementById('chainWrap').innerHTML = chain;
 }
@@ -1466,8 +1792,8 @@ function copySummary(){
   const btn = document.getElementById('copySummaryBtn');
   function done(ok){
     if(!btn) return;
-    const original = '复制文字摘要';
-    btn.textContent = ok ? '已复制 ✓' : '复制失败，请手动选择文字';
+    const original = t('btnCopySummary');
+    btn.textContent = ok ? t('copySuccess') : t('copyFail');
     setTimeout(()=>{ btn.textContent = original; }, 1600);
   }
   if(navigator.clipboard && navigator.clipboard.writeText){
@@ -1478,6 +1804,9 @@ function copySummary(){
 }
 
 // init: run once with defaults
+applyStaticI18n();
+updateLangToggleUI();
+setContainerMode(containerMode);
 palletPresetMgr.refresh();
 containerPresetMgr.refresh();
 calcOuterOptions();
