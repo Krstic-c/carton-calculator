@@ -204,7 +204,12 @@
   .readout-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:var(--space-3);}
   .readout{background:var(--paper);border-radius:16px;box-shadow:var(--shadow-card);padding:var(--space-5);display:flex;flex-direction:column;gap:6px;}
   .readout .rlabel{font-size:11.5px;color:var(--ink-dim);font-weight:500;}
-  .readout .rvalue{font-family:var(--font-display);font-size:26px;color:var(--ink);font-weight:600;letter-spacing:-0.3px;line-height:1.2;font-variant-numeric:tabular-nums;}
+  .readout .rvalue{font-family:var(--font-display);font-size:26px;color:var(--ink);font-weight:600;letter-spacing:-0.3px;line-height:1.2;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
+  /* long L×W×H triples (e.g. "408×368×328") don't have a natural line-break point
+     between digits and "×", so at narrow card widths they'd otherwise overflow past
+     the card edge instead of wrapping; dims uses a smaller size to fit on one line in
+     the common case, with overflow-wrap above as the guaranteed fallback. */
+  .readout .rvalue.dims{font-size:19px;}
   .readout .rsub{font-size:11px;color:var(--ink-faint);}
   .readout.key{background:var(--accent-tint);}
   .readout.key .rvalue{color:var(--accent);}
@@ -534,10 +539,11 @@ function safeNum(v, formatter){
 // shared template for the small stat cards used across all three STEPs'
 // results (label / big value / optional sub-caption). variant is '', 'key'
 // or 'warn' (see .readout CSS). Callers pass already-escaped/formatted HTML.
-function readoutCard(label, value, sub, variant){
+function readoutCard(label, value, sub, variant, valueClass){
   const cls = variant ? ' ' + variant : '';
+  const vcls = valueClass ? ' ' + valueClass : '';
   const subHtml = sub ? `<div class="rsub">${sub}</div>` : '';
-  return `<div class="readout${cls}"><div class="rlabel">${label}</div><div class="rvalue">${value}</div>${subHtml}</div>`;
+  return `<div class="readout${cls}"><div class="rlabel">${label}</div><div class="rvalue${vcls}">${value}</div>${subHtml}</div>`;
 }
 
 // ---------- localStorage-backed custom presets ----------
@@ -747,8 +753,8 @@ function drawOuterDiagram(opt){
   const innerL = opt.a*opt.e0, innerW = opt.b*opt.e1, innerH = opt.c*opt.e2;
   const marginUsed = opt.dimX - innerL;
   const readouts = [
-    readoutCard('预计外尺寸', `${esc(fmt(opt.dimX,0))}×${esc(fmt(opt.dimY,0))}×${esc(fmt(opt.dimZ,0))}`, 'mm (L×W×H) · 已含放尺', 'key'),
-    readoutCard('内尺寸（彩盒净尺寸）', `${esc(fmt(innerL,0))}×${esc(fmt(innerW,0))}×${esc(fmt(innerH,0))}`, 'mm · 不含放尺/纸板厚度', ''),
+    readoutCard('预计外尺寸', `${esc(fmt(opt.dimX,0))}×${esc(fmt(opt.dimY,0))}×${esc(fmt(opt.dimZ,0))}`, 'mm (L×W×H) · 已含放尺', 'key', 'dims'),
+    readoutCard('内尺寸（彩盒净尺寸）', `${esc(fmt(innerL,0))}×${esc(fmt(innerW,0))}×${esc(fmt(innerH,0))}`, 'mm · 不含放尺/纸板厚度', '', 'dims'),
     readoutCard('排列', `${esc(opt.a)}×${esc(opt.b)}×${esc(opt.c)}`, `格位 ${esc(opt.capacity)} 个，装 ${esc(opt.N)} 个彩盒`, ''),
     readoutCard('体积利用率', esc(pct(opt.util)), '彩盒体积 / 外箱体积', 'key')
   ].join('');
