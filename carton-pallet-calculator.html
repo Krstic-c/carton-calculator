@@ -502,6 +502,14 @@
   <div class="summary" id="summaryWrap" style="display:none;">
     <h3>汇总链路 Summary Chain</h3>
     <div class="chain" id="chainWrap"></div>
+    <div class="field-row" style="max-width:320px;">
+      <div class="field">
+        <label for="sumTotalQty" data-i18n="labelOrderQty">订单总数量（彩盒数）</label>
+        <input type="number" id="sumTotalQty" placeholder="10000" min="0" oninput="renderOrderSummary()">
+      </div>
+    </div>
+    <div class="note" data-i18n="noteOrderQty">按当前 STEP01–03 的选择，估算整批订单所需的外箱/卡板/货柜数量与总重、总材积，结果仅供参考。</div>
+    <div id="orderSummaryWrap"></div>
     <div class="summary-actions no-print">
       <button type="button" class="mini-btn" id="copySummaryBtn" data-i18n="btnCopySummary" onclick="copySummary()">复制文字摘要</button>
       <button type="button" class="mini-btn" id="printBtn" data-i18n="btnPrint" onclick="window.print()">打印 / 导出 PDF →</button>
@@ -650,6 +658,15 @@ const I18N = {
     rcStackLayersSub: (h) => `货柜内高 ${h}mm 限制`,
     floorWarnNote: '⚠ 散装直堆通常无法承受满高压重，实际层数请结合纸箱抗压强度核实。',
 
+    labelOrderQty: '订单总数量（彩盒数）',
+    noteOrderQty: '按当前 STEP01–03 的选择，估算整批订单所需的外箱/卡板/货柜数量与总重、总材积，结果仅供参考。',
+    rcOrderOuterNeeded: '所需外箱数', cartonsUnit: '外箱',
+    rcOrderPalletsNeeded: '所需卡板数',
+    rcOrderContainersNeeded: '所需货柜数',
+    needStep03Hint: '先完成 STEP03「计算货柜利用率」',
+    rcOrderGrossWeight: '预计总毛重',
+    rcOrderCBM: '预计总材积', cbmUnit: 'm³',
+
     alertNeedValidSize: '请先输入有效的尺寸再保存。',
     promptPresetName: '给这个预设起个名字（比如"工厂常用卡板"）：',
     alertNotCustomPreset: '当前选中的不是自定义预设，无法删除。',
@@ -780,6 +797,15 @@ const I18N = {
     rcStackLayers: 'Stack Layers',
     rcStackLayersSub: (h) => `limited by ${h}mm internal height`,
     floorWarnNote: '⚠ Direct floor stacking usually can’t bear a full-height load — verify the actual number of layers against real carton compression strength.',
+
+    labelOrderQty: 'Total order quantity (pcs)',
+    noteOrderQty: 'Estimates the cartons/pallets/containers, gross weight and CBM needed for this order, based on your current STEP01–03 choices. Estimate only.',
+    rcOrderOuterNeeded: 'Outer Cartons Needed', cartonsUnit: 'cartons',
+    rcOrderPalletsNeeded: 'Pallets Needed',
+    rcOrderContainersNeeded: 'Containers Needed',
+    needStep03Hint: 'Calculate STEP 03 first',
+    rcOrderGrossWeight: 'Est. Total Gross Weight',
+    rcOrderCBM: 'Est. Total CBM', cbmUnit: 'm³',
 
     alertNeedValidSize: 'Please enter valid dimensions before saving.',
     promptPresetName: 'Name this preset (e.g. "Factory standard pallet"):',
@@ -1709,6 +1735,55 @@ function renderSummary(){
     <div class="node"><div class="n">${esc(palletResult.totalPcs)}</div><div class="l">${pcsPerPalletLabel}</div></div>
   `;
   document.getElementById('chainWrap').innerHTML = chain;
+  renderOrderSummary();
+}
+
+// Total-order estimate: given a total product quantity, derives how many
+// outer cartons/pallets/containers the whole order needs and the resulting
+// total gross weight + CBM. Reads the same live STEP02 inputs (ob_n/ob_l/
+// ob_w/ob_h) that renderSummary()'s chain above it reads, rather than
+// anything baked into palletResult, so the two stay consistent with each
+// other if the user tweaks a field without re-clicking "计算卡板利用率".
+// Pallets/containers-needed depend on containerMode and on whether STEP03
+// has actually been run for that mode — shown as a hint, not a guess, when
+// it hasn't (see discussion with user before building this: CBM uses outer-
+// carton material volume, not pallet footprint, by explicit choice).
+function renderOrderSummary(){
+  const wrap = document.getElementById('orderSummaryWrap');
+  if(!wrap) return;
+  if(!palletResult){ wrap.innerHTML = ''; return; }
+  const raw = document.getElementById('sumTotalQty').value;
+  const totalQty = raw === '' ? NaN : parseFloat(raw);
+  if(isNaN(totalQty) || totalQty<=0){ wrap.innerHTML = ''; return; }
+
+  const n = num('ob_n');
+  if(n<=0){ wrap.innerHTML = ''; return; }
+  const outerNeeded = Math.ceil(totalQty / n);
+  const grossWeight = outerNeeded * palletResult.cartonWt;
+  const cl = num('ob_l'), cw = num('ob_w'), ch = num('ob_h');
+  const totalCBM = outerNeeded * (cl*cw*ch) / 1e9;
+
+  let palletCard = '', containerCard;
+  if(containerMode === 'pallet'){
+    const palletsNeeded = Math.ceil(outerNeeded / palletResult.totalCartons);
+    palletCard = readoutCard(t('rcOrderPalletsNeeded'), esc(palletsNeeded), '', 'key');
+    containerCard = (containerResult && containerResult.mode === 'pallet')
+      ? readoutCard(t('rcOrderContainersNeeded'), esc(Math.ceil(palletsNeeded / containerResult.palletsPerContainer)), '', 'key')
+      : readoutCard(t('rcOrderContainersNeeded'), '—', t('needStep03Hint'), '');
+  } else {
+    containerCard = (containerResult && containerResult.mode === 'floor')
+      ? readoutCard(t('rcOrderContainersNeeded'), esc(Math.ceil(outerNeeded / containerResult.totalCartons)), '', 'key')
+      : readoutCard(t('rcOrderContainersNeeded'), '—', t('needStep03Hint'), '');
+  }
+
+  const cards = [
+    readoutCard(t('rcOrderOuterNeeded'), esc(outerNeeded), t('cartonsUnit'), 'key'),
+    palletCard,
+    containerCard,
+    readoutCard(t('rcOrderGrossWeight'), esc(fmt(grossWeight,0)), t('kgUnit'), ''),
+    readoutCard(t('rcOrderCBM'), esc(fmt(totalCBM,2)), t('cbmUnit'), '')
+  ].join('');
+  wrap.innerHTML = `<div class="readout-grid">${cards}</div>`;
 }
 
 // ---------- copy-to-clipboard summary (plain text, safe for email/IM) ----------
